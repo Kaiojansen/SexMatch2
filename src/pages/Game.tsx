@@ -445,6 +445,7 @@ const Title = styled(Typography)({
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { partnerId: urlPartnerId } = useParams(); // Pegando o ID do parceiro da URL
   const [cards, setCards] = useState<CardData[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [translateX, setTranslateX] = useState(0);
@@ -464,8 +465,8 @@ const Game: React.FC = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!currentUser) {
-        console.log('Usuário não está logado');
+      if (!currentUser || !urlPartnerId) {
+        console.log('Usuário não está logado ou ID do parceiro não fornecido');
         return;
       }
       
@@ -476,13 +477,13 @@ const Game: React.FC = () => {
           const userData = userDoc.data();
           console.log('Dados do usuário encontrados:', userData);
           
-          if (userData.partners && userData.partners.length > 0) {
-            const partnerId = userData.partners[0];
-            console.log('Parceiro encontrado:', partnerId);
-            setPartnerId(partnerId);
+          // Verificar se o parceiro da URL está na lista de parceiros do usuário
+          if (userData.partners && userData.partners.includes(urlPartnerId)) {
+            console.log('Parceiro válido encontrado:', urlPartnerId);
+            setPartnerId(urlPartnerId);
 
             // Criar ou verificar documento de parceria
-            const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+            const partnershipId = [currentUser.uid, urlPartnerId].sort().join('_');
             console.log('ID da parceria gerado:', partnershipId);
             const partnershipRef = doc(db, 'partners', partnershipId);
             const partnershipDoc = await getDoc(partnershipRef);
@@ -490,7 +491,7 @@ const Game: React.FC = () => {
             if (!partnershipDoc.exists()) {
               console.log('Criando novo documento de parceria:', partnershipId);
               // Criar documento inicial de parceria
-              const [user1, user2] = [currentUser.uid, partnerId].sort();
+              const [user1, user2] = [currentUser.uid, urlPartnerId].sort();
               await setDoc(partnershipRef, {
                 id: partnershipId,
                 user1: user1,
@@ -509,8 +510,9 @@ const Game: React.FC = () => {
               console.log('Documento de parceria já existe:', partnershipId);
             }
           } else {
-            console.log('Usuário não tem parceiro vinculado');
-            setError('Você precisa ter um parceiro vinculado para jogar');
+            console.log('Parceiro não encontrado na lista de parceiros do usuário');
+            setError('Parceiro inválido');
+            navigate('/dashboard');
           }
         } else {
           console.log('Documento do usuário não encontrado');
@@ -523,7 +525,7 @@ const Game: React.FC = () => {
     };
 
     fetchUserData();
-  }, [currentUser]);
+  }, [currentUser, urlPartnerId, navigate]);
 
   useEffect(() => {
     const fetchCards = async () => {

@@ -197,6 +197,10 @@ const Dashboard: React.FC = () => {
   };
 
   const handleStartGame = (partnerId: string) => {
+    if (!partnerId) {
+      setError('Parceiro inválido');
+      return;
+    }
     navigate(`/game/${partnerId}`);
   };
 
