@@ -332,41 +332,6 @@ const parseTimestamp = (timestamp: string | Timestamp): Date => {
   return timestamp.toDate();
 };
 
-// Componente de animação de fogos
-const FireworksEmoji = styled('div')({
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  pointerEvents: 'none',
-  zIndex: 10000,
-  animation: 'fadeOut 2s forwards',
-  '& .emoji': {
-    position: 'absolute',
-    fontSize: '2rem',
-    animation: 'floatUp 2s ease-out forwards',
-  },
-  '@keyframes fadeOut': {
-    '0%': { opacity: 1 },
-    '80%': { opacity: 1 },
-    '100%': { opacity: 0 }
-  },
-  '@keyframes floatUp': {
-    '0%': { 
-      transform: 'translateY(0) scale(1)',
-      opacity: 1 
-    },
-    '100%': { 
-      transform: 'translateY(-100vh) scale(0)',
-      opacity: 0 
-    }
-  }
-});
-
 const HotButton = styled(Button)(({ theme }) => ({
   backgroundColor: '#ff4b6e',
   color: 'white',
@@ -400,7 +365,6 @@ const Game: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [showFireworks, setShowFireworks] = useState(false);
   const [hotMarkedCards, setHotMarkedCards] = useState<{ [cardId: string]: boolean }>({});
 
   useEffect(() => {
@@ -703,21 +667,6 @@ const Game: React.FC = () => {
     }
   };
 
-  // Efeito para mostrar fogos quando receber notificação
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const unsubscribe = onSnapshot(doc(db, 'notifications', currentUser.uid), (doc) => {
-      const data = doc.data();
-      if (data?.type === 'hot_mark') {
-        setShowFireworks(true);
-        setTimeout(() => setShowFireworks(false), 2000);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [currentUser]);
-
   return (
     <StyledContainer maxWidth={false}>
       <MatchesButton onClick={() => setShowMatches(!showMatches)}>
@@ -743,11 +692,7 @@ const Game: React.FC = () => {
           }}>
             Seus Matches
           </Typography>
-          {matches.length === 0 ? (
-            <Typography variant="body1" sx={{ textAlign: 'center', color: 'text.secondary' }}>
-              Nenhum match ainda
-            </Typography>
-          ) : (
+          {matches && matches.length > 0 ? (
             <MatchesGrid>
               {matches.map((match) => (
                 <MatchCard 
@@ -776,9 +721,12 @@ const Game: React.FC = () => {
                         background: 'linear-gradient(45deg, #ff4b6e, #ff1f4b)',
                         padding: '4px 8px',
                         borderRadius: '12px',
-                        boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)'
+                        boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)',
+                        animation: 'pulse 2s infinite'
                       }}>
-                        <LocalFireDepartmentIcon sx={{ fontSize: '1rem' }} />
+                        <LocalFireDepartmentIcon sx={{ 
+                          fontSize: '1rem'
+                        }} />
                         <Typography variant="caption" sx={{ 
                           color: '#fff',
                           fontWeight: 'bold',
@@ -834,6 +782,10 @@ const Game: React.FC = () => {
                 </MatchCard>
               ))}
             </MatchesGrid>
+          ) : (
+            <Typography variant="body1" sx={{ textAlign: 'center', color: 'text.secondary' }}>
+              Nenhum match ainda
+            </Typography>
           )}
         </MatchesPanel>
       </Collapse>
@@ -1065,24 +1017,6 @@ const Game: React.FC = () => {
             </Box>
           </ModalContent>
         </ModalOverlay>
-      )}
-
-      {/* Animação de fogos */}
-      {showFireworks && (
-        <FireworksEmoji>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div
-              key={i}
-              className="emoji"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 0.5}s`,
-              }}
-            >
-              {['🔥', '💥', '⭐', '✨'][Math.floor(Math.random() * 4)]}
-            </div>
-          ))}
-        </FireworksEmoji>
       )}
 
       {error && (
