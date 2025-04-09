@@ -56,6 +56,13 @@ interface Match {
   cardImage: string;
 }
 
+interface PartnershipData {
+  users: string[];
+  createdAt: any;
+  matches: Match[];
+  [key: string]: any; // Para os campos dinâmicos de likes
+}
+
 const StyledContainer = styled(Container)({
   background: 'linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(40,0,0,0.95) 100%)',
   minHeight: '100vh',
@@ -312,47 +319,50 @@ const Game: React.FC = () => {
   useEffect(() => {
     if (!currentUser || !partnerId) return;
 
-    // Escutar por novos matches
-    const matchesRef = collection(db, 'matches');
-    const q = query(
-      matchesRef,
-      where('users', 'array-contains', currentUser.uid)
-    );
+    // Criar ou obter o documento de parceiros
+    const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+    const partnershipRef = doc(db, 'partners', partnershipId);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(partnershipRef, (doc) => {
       try {
-        const newMatches: Match[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          // Verifica se o match é entre o usuário atual e seu parceiro
-          if (data.users.includes(partnerId)) {
-            newMatches.push({
-              cardId: data.cardId,
-              timestamp: data.timestamp,
-              cardTitle: data.cardTitle,
-              cardImage: data.cardImage
-            });
+        if (doc.exists()) {
+          const data = doc.data() as PartnershipData;
+          const matches = data.matches || [];
+          
+          // Converter os matches para o formato esperado pela interface
+          const formattedMatches: Match[] = matches.map((match: Match) => ({
+            cardId: match.cardId,
+            timestamp: match.timestamp,
+            cardTitle: match.cardTitle,
+            cardImage: match.cardImage
+          }));
+
+          // Ordenar matches por data, mais recentes primeiro
+          formattedMatches.sort((a: Match, b: Match) => b.timestamp?.toDate() - a.timestamp?.toDate());
+          
+          setMatches(formattedMatches);
+          
+          // Atualizar contador apenas para matches novos
+          const newMatchesCount = formattedMatches.filter((match: Match) => 
+            match.timestamp?.toDate() > new Date(Date.now() - 5000) // últimos 5 segundos
+          ).length;
+          
+          if (newMatchesCount > 0) {
+            setNewMatchCount(prev => prev + newMatchesCount);
           }
-        });
-        
-        // Ordenar matches por data, mais recentes primeiro
-        newMatches.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
-        
-        setMatches(newMatches);
-        
-        // Atualizar contador apenas para matches novos
-        const newMatchesCount = newMatches.filter(match => 
-          match.timestamp?.toDate() > new Date(Date.now() - 5000) // últimos 5 segundos
-        ).length;
-        
-        if (newMatchesCount > 0) {
-          setNewMatchCount(prev => prev + newMatchesCount);
+        } else {
+          // Criar documento de parceria se não existir
+          setDoc(partnershipRef, {
+            users: [currentUser.uid, partnerId],
+            createdAt: serverTimestamp(),
+            [`likes_${currentUser.uid}`]: [],
+            [`likes_${partnerId}`]: [],
+            matches: []
+          });
         }
       } catch (error) {
-        console.error('Error processing matches:', error);
+        console.error('Error processing partnership data:', error);
       }
-    }, (error) => {
-      console.error('Error in matches listener:', error);
     });
 
     return () => unsubscribe();
@@ -407,64 +417,56 @@ const Game: React.FC = () => {
     console.log('Tentando curtir card:', currentCard.id);
     
     try {
-      // Criar ID único para o like
-      const likeId = `${currentCard.id}_${currentUser.uid}`;
-      const likeRef = doc(db, 'likes', likeId);
-      
-      // Verificar se já deu like antes
-      const existingLike = await getDoc(likeRef);
-      if (existingLike.exists()) {
-        console.log('Like já existe para este card');
+      // Obter o documento de parceria
+      const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+      const partnershipRef = doc(db, 'partners', partnershipId);
+      const partnershipDoc = await getDoc(partnershipRef);
+
+      if (!partnershipDoc.exists()) {
+        throw new Error('Documento de parceria não encontrado');
+      }
+
+      const data = partnershipDoc.data();
+      const userLikes = data[`likes_${currentUser.uid}`] || [];
+      const partnerLikes = data[`likes_${partnerId}`] || [];
+      const matches = data.matches || [];
+
+      // Verificar se já curtiu este card
+      if (userLikes.includes(currentCard.id)) {
+        console.log('Card já foi curtido');
         setCurrentCardIndex(prev => prev + 1);
         return;
       }
 
-      console.log('Salvando like para o usuário:', currentUser.uid);
-      // Salvar o like
-      await setDoc(likeRef, {
-        userId: currentUser.uid,
-        cardId: currentCard.id,
-        partnerId: partnerId,
-        timestamp: serverTimestamp()
-      });
+      // Adicionar o like
+      const updatedUserLikes = [...userLikes, currentCard.id];
 
-      // Verificar se o parceiro já deu like
-      const partnerLikeId = `${currentCard.id}_${partnerId}`;
-      const partnerLikeRef = doc(db, 'likes', partnerLikeId);
-      const partnerLikeDoc = await getDoc(partnerLikeRef);
+      // Verificar se é um match
+      if (partnerLikes.includes(currentCard.id)) {
+        console.log('Match encontrado!');
+        
+        // Adicionar aos matches
+        const newMatch = {
+          cardId: currentCard.id,
+          timestamp: serverTimestamp(),
+          cardTitle: currentCard.title,
+          cardImage: currentCard.image
+        };
 
-      console.log('Verificando like do parceiro:', partnerId);
-      if (partnerLikeDoc.exists()) {
-        const partnerLikeData = partnerLikeDoc.data();
-        // Verifica se o like do parceiro é realmente para este usuário
-        if (partnerLikeData.partnerId === currentUser.uid) {
-          console.log('Match encontrado!');
-          // É um match! Criar documento de match
-          const matchId = `${currentCard.id}_${currentUser.uid}_${partnerId}`;
-          const matchRef = doc(db, 'matches', matchId);
-          
-          // Verificar se o match já existe
-          const existingMatch = await getDoc(matchRef);
-          if (!existingMatch.exists()) {
-            console.log('Criando novo match');
-            await setDoc(matchRef, {
-              cardId: currentCard.id,
-              users: [currentUser.uid, partnerId],
-              timestamp: serverTimestamp(),
-              cardTitle: currentCard.title,
-              cardImage: currentCard.image,
-              seenBy: [currentUser.uid] // Adiciona o usuário atual como tendo visto o match
-            });
+        // Atualizar o documento com o novo like e match
+        await updateDoc(partnershipRef, {
+          [`likes_${currentUser.uid}`]: updatedUserLikes,
+          matches: arrayUnion(newMatch)
+        });
 
-            setMatchedCard(currentCard);
-            setShowMatchDialog(true);
-            setNewMatchCount(prev => prev + 1);
-          }
-        } else {
-          console.log('Like do parceiro encontrado, mas não é para este usuário');
-        }
+        setMatchedCard(currentCard);
+        setShowMatchDialog(true);
+        setNewMatchCount(prev => prev + 1);
       } else {
-        console.log('Parceiro ainda não deu like neste card');
+        // Atualizar apenas o like
+        await updateDoc(partnershipRef, {
+          [`likes_${currentUser.uid}`]: updatedUserLikes
+        });
       }
 
       // Avançar para o próximo card
