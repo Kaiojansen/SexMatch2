@@ -28,13 +28,16 @@ import {
   CardActions,
   Chip,
   Menu,
-  MenuItem
+  MenuItem,
+  ListItemIcon
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PersonIcon from '@mui/icons-material/Person';
+import EditIcon from '@mui/icons-material/Edit';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { motion } from 'framer-motion';
@@ -588,8 +591,22 @@ const Dashboard: React.FC = () => {
           }
         }}
       >
+        <MenuItem disabled sx={{ opacity: 1 }}>
+          <ListItemIcon>
+            <PersonIcon sx={{ color: '#ff4b6e' }} />
+          </ListItemIcon>
+          <ListItemText 
+            primary={userName || 'Sem nome'} 
+            secondary="Seu nome atual"
+            sx={{ color: '#fff' }}
+          />
+        </MenuItem>
+        <Divider sx={{ bgcolor: 'rgba(255, 75, 110, 0.2)' }} />
         <MenuItem onClick={handleEditName}>
-          Editar Nome
+          <ListItemIcon>
+            <EditIcon sx={{ color: '#ff4b6e' }} />
+          </ListItemIcon>
+          <ListItemText primary="Mudar Nome" />
         </MenuItem>
       </Menu>
 
