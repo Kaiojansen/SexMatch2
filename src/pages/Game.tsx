@@ -68,30 +68,27 @@ const CardWrapper = styled(Box)(({ theme }) => ({
   }
 }));
 
-const StyledCard = styled(motion(Card))(({ theme }) => ({
+const StyledCard = styled(motion.div)({
+  position: 'relative',
   width: '100%',
-  height: '100%',
-  position: 'absolute',
-  borderRadius: '20px',
-  background: 'rgba(20, 20, 20, 0.8)',
-  backdropFilter: 'blur(10px)',
-  border: '1px solid rgba(255, 75, 110, 0.2)',
-  cursor: 'grab',
+  maxWidth: '400px',
+  height: '500px',
+  borderRadius: '16px',
   overflow: 'hidden',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+  cursor: 'grab',
+  userSelect: 'none',
+  touchAction: 'none',
+  backgroundColor: 'white',
   '&:active': {
-    cursor: 'grabbing'
+    cursor: 'grabbing',
   },
-  [theme.breakpoints.down('sm')]: {
-    borderRadius: '15px',
-  }
-}));
+});
 
 const CardImage = styled('img')({
   width: '100%',
   height: '100%',
   objectFit: 'cover',
-  filter: 'brightness(0.8)',
-  transition: 'all 0.3s ease',
 });
 
 const CardOverlay = styled(Box)({
@@ -99,8 +96,8 @@ const CardOverlay = styled(Box)({
   bottom: 0,
   left: 0,
   right: 0,
-  background: 'linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 40%, transparent 100%)',
-  padding: '80px 24px 24px',
+  padding: '24px',
+  background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)',
   color: 'white',
 });
 
@@ -145,16 +142,18 @@ const ActionButton = styled(IconButton)(({ theme }) => ({
   }
 }));
 
-const SwipeIndicator = styled('div')(({ theme }) => ({
+const SwipeIndicator = styled(Box)<{ direction: 'left' | 'right' }>(({ direction }) => ({
   position: 'absolute',
   top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  fontSize: '2rem',
+  transform: 'translateY(-50%)',
+  ...(direction === 'left' ? { left: '20px' } : { right: '20px' }),
+  padding: '8px 16px',
+  borderRadius: '8px',
+  background: direction === 'left' ? 'rgba(255, 0, 0, 0.8)' : 'rgba(0, 255, 0, 0.8)',
+  color: 'white',
   fontWeight: 'bold',
-  opacity: 0.8,
-  pointerEvents: 'none',
-  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+  opacity: 0,
+  zIndex: 10,
 }));
 
 const MatchesButton = styled(IconButton)(({ theme }) => ({
@@ -199,23 +198,6 @@ const MatchCard = styled(Card)(({ theme }) => ({
   '&:hover': {
     transform: 'scale(1.02)',
     borderColor: '#ff4b6e',
-  },
-}));
-
-const CardContainer = styled(Box)(({ theme }) => ({
-  position: 'relative',
-  width: '100%',
-  maxWidth: '400px',
-  height: '500px',
-  borderRadius: '16px',
-  overflow: 'hidden',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-  cursor: 'grab',
-  userSelect: 'none',
-  touchAction: 'none',
-  backgroundColor: 'white',
-  '&:active': {
-    cursor: 'grabbing',
   },
 }));
 
@@ -268,7 +250,7 @@ const GameCard = ({ card, onSwipe, isProcessing }: { card: CardData; onSwipe: (d
   const rotate = translateX * 0.1;
 
   return (
-    <CardContainer
+    <StyledCard
       style={{
         transform: `translateX(${translateX}px) rotate(${rotate}deg)`,
         cursor: isProcessing ? 'not-allowed' : 'grab',
@@ -291,12 +273,12 @@ const GameCard = ({ card, onSwipe, isProcessing }: { card: CardData; onSwipe: (d
           {card.title}
         </Typography>
         {swipeDirection && (
-          <SwipeIndicator>
+          <SwipeIndicator direction={swipeDirection}>
             {swipeDirection === 'right' ? '👍 Like' : '👎 Dislike'}
           </SwipeIndicator>
         )}
       </CardContent>
-    </CardContainer>
+    </StyledCard>
   );
 };
 
@@ -466,31 +448,58 @@ const Game: React.FC = () => {
     }
   };
 
+  const handleDrag = (event: any, info: any) => {
+    if (info.offset.x > 50) {
+      setSwipeDirection('right');
+    } else if (info.offset.x < -50) {
+      setSwipeDirection('left');
+    } else {
+      setSwipeDirection(null);
+    }
+  };
+
+  const handleDragEnd = (event: any, info: any) => {
+    const offset = info.offset.x;
+    const velocity = info.velocity.x;
+
+    if (Math.abs(velocity) >= 800 || Math.abs(offset) >= 100) {
+      if (offset > 0) {
+        handleSwipe('right');
+      } else {
+        handleSwipe('left');
+      }
+    }
+  };
+
   return (
     <StyledContainer maxWidth={false}>
       <MatchesButton onClick={() => setShowMatches(!showMatches)}>
-        <Badge color="error" variant="dot" invisible={!newMatch}>
-          <LocalFireDepartmentIcon sx={{ color: '#ff4b6e' }} />
+        <Badge badgeContent={newMatch ? "!" : 0} color="error">
+          <FavoriteIcon />
         </Badge>
       </MatchesButton>
 
-      <Collapse in={showMatches}>
+      <Collapse in={showMatches} sx={{ position: 'fixed', top: '80px', right: '20px', zIndex: 1000 }}>
         <MatchesPanel>
-          <Typography variant="h6" gutterBottom sx={{ color: '#ff4b6e', textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
             Seus Matches
           </Typography>
-          {matches.map((match) => (
-            <MatchCard key={match.id}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: '#ff4b6e' }}>
+          {matches.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              Nenhum match ainda. Continue jogando!
+            </Typography>
+          ) : (
+            matches.map(match => (
+              <MatchCard key={match.id}>
+                <Typography variant="subtitle1" gutterBottom>
                   {match.title}
                 </Typography>
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                <Typography variant="body2" color="text.secondary">
                   {match.description}
                 </Typography>
-              </CardContent>
-            </MatchCard>
-          ))}
+              </MatchCard>
+            ))
+          )}
         </MatchesPanel>
       </Collapse>
 
@@ -525,61 +534,67 @@ const Game: React.FC = () => {
         <CardWrapper>
           <AnimatePresence mode="wait">
             {currentCardIndex < cards.length ? (
-              <GameCard
+              <StyledCard
                 key={cards[currentCardIndex].id}
-                card={cards[currentCardIndex]}
-                onSwipe={handleSwipe}
-                isProcessing={isProcessing}
-              />
+                drag="x"
+                dragConstraints={dragConstraints}
+                onDrag={handleDrag}
+                onDragEnd={handleDragEnd}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -200 }}
+                whileDrag={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                <CardImage 
+                  src={cards[currentCardIndex].image} 
+                  alt={cards[currentCardIndex].title} 
+                />
+                <CardOverlay>
+                  <Typography variant="h5" gutterBottom sx={{ 
+                    fontWeight: 600, 
+                    color: '#ff4b6e',
+                    fontSize: { xs: '1.5rem', sm: '1.8rem' }
+                  }}>
+                    {cards[currentCardIndex].title}
+                  </Typography>
+                  <Typography variant="body1" sx={{ 
+                    color: 'rgba(255,255,255,0.8)',
+                    fontSize: { xs: '0.9rem', sm: '1rem' }
+                  }}>
+                    {cards[currentCardIndex].description}
+                  </Typography>
+                </CardOverlay>
+                <SwipeIndicator 
+                  direction="left" 
+                  sx={{ opacity: swipeDirection === 'left' ? 1 : 0 }}
+                >
+                  NOPE
+                </SwipeIndicator>
+                <SwipeIndicator 
+                  direction="right" 
+                  sx={{ opacity: swipeDirection === 'right' ? 1 : 0 }}
+                >
+                  LIKE
+                </SwipeIndicator>
+              </StyledCard>
             ) : (
               <Box 
                 sx={{ 
                   textAlign: 'center',
-                  p: { xs: 3, sm: 6 },
-                  background: 'rgba(20, 20, 20, 0.8)',
+                  p: 4,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(255,255,255,0.1)',
                   backdropFilter: 'blur(10px)',
-                  borderRadius: 3,
-                  border: '1px solid rgba(255, 75, 110, 0.2)',
-                  width: '100%',
-                  height: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center'
+                  border: '1px solid rgba(255,255,255,0.2)'
                 }}
               >
-                <Typography variant="h5" gutterBottom sx={{ 
-                  color: '#ff4b6e', 
-                  fontWeight: 'bold', 
-                  mb: 3,
-                  fontSize: { xs: '1.5rem', sm: '1.8rem' }
-                }}>
-                  Acabaram as cartas! 🎭
+                <Typography variant="h5" gutterBottom>
+                  Todas as cartas foram visualizadas!
                 </Typography>
-                <Typography variant="body1" sx={{ 
-                  color: 'rgba(255,255,255,0.8)', 
-                  mb: 4,
-                  fontSize: { xs: '0.9rem', sm: '1rem' }
-                }}>
-                  Volte em algumas horas para descobrir novas fantasias. Suas escolhas foram salvas!
+                <Typography variant="body1">
+                  Volte mais tarde para novas cartas.
                 </Typography>
-                <Button
-                  variant="outlined"
-                  onClick={() => window.location.reload()}
-                  sx={{
-                    borderColor: '#ff4b6e',
-                    color: '#ff4b6e',
-                    px: { xs: 3, sm: 4 },
-                    py: { xs: 1, sm: 1.5 },
-                    fontSize: { xs: '0.9rem', sm: '1.1rem' },
-                    '&:hover': {
-                      borderColor: '#ff1f4c',
-                      backgroundColor: 'rgba(255, 75, 110, 0.1)'
-                    }
-                  }}
-                >
-                  Verificar Novos Cards
-                </Button>
               </Box>
             )}
           </AnimatePresence>
@@ -587,16 +602,18 @@ const Game: React.FC = () => {
 
         <ActionButtons>
           <ActionButton 
+            className="dislike" 
             onClick={() => handleSwipe('left')}
-            className="dislike"
+            disabled={isProcessing}
           >
-            <CloseIcon sx={{ fontSize: { xs: 24, sm: 30 }, color: '#666' }} />
+            <CloseIcon />
           </ActionButton>
           <ActionButton 
+            className="like" 
             onClick={() => handleSwipe('right')}
-            className="like"
+            disabled={isProcessing}
           >
-            <FavoriteIcon sx={{ fontSize: { xs: 24, sm: 30 }, color: '#ff4b6e' }} />
+            <FavoriteIcon />
           </ActionButton>
         </ActionButtons>
 
