@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, getDocs, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
 import {
@@ -155,29 +156,48 @@ const SwipeIndicator = styled(Box)<{ direction: 'left' | 'right' }>(({ direction
 
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
+  const { partnerId } = useParams<{ partnerId: string }>();
+  const navigate = useNavigate();
   const [cards, setCards] = useState<CardData[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [dragConstraints, setDragConstraints] = useState({ left: 0, right: 0 });
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [matchedCard, setMatchedCard] = useState<CardData | null>(null);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Carregar cards do Firebase
   useEffect(() => {
+    if (!currentUser || !partnerId) {
+      navigate('/dashboard');
+      return;
+    }
+
     const fetchCards = async () => {
-      const cardsRef = collection(db, 'cards');
-      const querySnapshot = await getDocs(cardsRef);
-      const cardsData: CardData[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        cardsData.push({ id: doc.id, ...doc.data() } as CardData);
-      });
-      
-      setCards(cardsData);
+      try {
+        setIsLoading(true);
+        const cardsRef = collection(db, 'cards');
+        const q = query(cardsRef);
+        const querySnapshot = await getDocs(q);
+        
+        const fetchedCards = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as CardData[];
+
+        // Embaralhar as cartas
+        const shuffledCards = fetchedCards.sort(() => Math.random() - 0.5);
+        setCards(shuffledCards);
+      } catch (error) {
+        console.error('Error fetching cards:', error);
+        setError('Erro ao carregar as cartas. Tente novamente.');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchCards();
-  }, []);
+  }, [currentUser, partnerId, navigate]);
 
   // Monitorar matches em tempo real
   useEffect(() => {

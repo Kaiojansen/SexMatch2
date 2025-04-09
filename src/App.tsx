@@ -127,11 +127,11 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/partner-request" element={<PrivateRoute><PartnerRequest /></PrivateRoute>} />
-            <Route path="/game" element={<PrivateRoute><Game /></PrivateRoute>} />
+            <Route path="/partner-request" element={<PartnerRequest />} />
             <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/game/:partnerId" element={<PrivateRoute><Game /></PrivateRoute>} />
+            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>
       </AuthProvider>
