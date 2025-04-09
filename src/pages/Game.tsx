@@ -559,7 +559,7 @@ const Game: React.FC = () => {
             fontFamily: '"Playfair Display", serif',
           }}
         >
-          Descubra Suas Fantasias
+          SexMatch
         </Typography>
 
         <CardWrapper>
