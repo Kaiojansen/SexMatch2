@@ -59,8 +59,9 @@ interface Match {
 interface PartnershipData {
   users: string[];
   createdAt: any;
+  likes_user1: string[]; // IDs dos cards curtidos pelo usuário 1
+  likes_user2: string[]; // IDs dos cards curtidos pelo usuário 2
   matches: Match[];
-  [key: string]: any; // Para os campos dinâmicos de likes
 }
 
 const StyledContainer = styled(Container)({
@@ -266,9 +267,7 @@ const Game: React.FC = () => {
           const userData = userDoc.data();
           console.log('Dados do usuário encontrados:', userData);
           
-          // Verifica se existe o array de partners
           if (userData.partners && userData.partners.length > 0) {
-            // Pega o primeiro parceiro do array
             const partnerId = userData.partners[0];
             console.log('Parceiro encontrado:', partnerId);
             setPartnerId(partnerId);
@@ -280,11 +279,12 @@ const Game: React.FC = () => {
 
             if (!partnershipDoc.exists()) {
               // Criar documento inicial de parceria
+              const [user1, user2] = [currentUser.uid, partnerId].sort();
               await setDoc(partnershipRef, {
-                users: [currentUser.uid, partnerId],
+                users: [user1, user2],
                 createdAt: serverTimestamp(),
-                [`likes_${currentUser.uid}`]: [],
-                [`likes_${partnerId}`]: [],
+                likes_user1: [], // Likes do primeiro usuário (em ordem alfabética)
+                likes_user2: [], // Likes do segundo usuário (em ordem alfabética)
                 matches: []
               });
             }
@@ -388,13 +388,8 @@ const Game: React.FC = () => {
   };
 
   const handleLike = async () => {
-    if (!currentUser) {
-      setError('Você precisa estar logado para curtir');
-      return;
-    }
-
-    if (!partnerId) {
-      setError('Você precisa ter um parceiro vinculado para curtir');
+    if (!currentUser || !partnerId) {
+      setError('Você precisa estar logado e ter um parceiro para curtir');
       return;
     }
 
@@ -412,8 +407,12 @@ const Game: React.FC = () => {
       }
 
       const data = partnershipDoc.data();
-      const userLikes = data[`likes_${currentUser.uid}`] || [];
-      const partnerLikes = data[`likes_${partnerId}`] || [];
+      const [user1, user2] = [currentUser.uid, partnerId].sort();
+      const isUser1 = currentUser.uid === user1;
+      
+      // Pegar os likes do usuário atual e do parceiro
+      const userLikes = isUser1 ? data.likes_user1 || [] : data.likes_user2 || [];
+      const partnerLikes = isUser1 ? data.likes_user2 || [] : data.likes_user1 || [];
 
       // Verificar se já curtiu este card
       if (userLikes.includes(currentCard.id)) {
@@ -422,7 +421,7 @@ const Game: React.FC = () => {
       }
 
       // Adicionar o like
-      const updatedUserLikes = [...userLikes, currentCard.id];
+      const updatedLikes = [...userLikes, currentCard.id];
 
       // Verificar se é um match
       if (partnerLikes.includes(currentCard.id)) {
@@ -434,8 +433,9 @@ const Game: React.FC = () => {
           cardImage: currentCard.image
         };
 
+        // Atualizar o documento com o novo like e match
         await updateDoc(partnershipRef, {
-          [`likes_${currentUser.uid}`]: updatedUserLikes,
+          [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes,
           matches: arrayUnion(newMatch)
         });
 
@@ -445,7 +445,7 @@ const Game: React.FC = () => {
       } else {
         // Apenas adicionar o like
         await updateDoc(partnershipRef, {
-          [`likes_${currentUser.uid}`]: updatedUserLikes
+          [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes
         });
       }
 
