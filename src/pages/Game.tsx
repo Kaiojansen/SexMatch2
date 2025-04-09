@@ -52,7 +52,6 @@ interface CardData {
 
 interface Match {
   cardId: string;
-  timestamp: string;
   cardTitle: string;
   cardImage: string;
 }
@@ -237,6 +236,41 @@ const MatchCard = styled(Card)(({ theme }) => ({
   },
 }));
 
+const ModalOverlay = styled(Box)({
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.7)',
+  zIndex: 999,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center'
+});
+
+const ModalContent = styled(Box)({
+  position: 'relative',
+  backgroundColor: '#fff',
+  padding: '20px',
+  borderRadius: '15px',
+  boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
+  maxWidth: '90vw',
+  maxHeight: '90vh',
+  overflow: 'auto',
+  zIndex: 1000,
+});
+
+const CloseButton = styled(IconButton)({
+  position: 'absolute',
+  top: '10px',
+  right: '10px',
+  color: '#666',
+  '&:hover': {
+    backgroundColor: 'rgba(0,0,0,0.04)'
+  }
+});
+
 // Função auxiliar para converter timestamp
 const parseTimestamp = (timestamp: string | Timestamp): Date => {
   if (typeof timestamp === 'string') {
@@ -261,6 +295,7 @@ const Game: React.FC = () => {
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -356,13 +391,8 @@ const Game: React.FC = () => {
         setMatches(matches);
         
         // Atualizar contador apenas para matches novos
-        const newMatchesCount = matches.filter((match: Match) => 
-          parseTimestamp(match.timestamp).getTime() > new Date(Date.now() - 5000).getTime()
-        ).length;
-        
-        if (newMatchesCount > 0) {
-          setNewMatchCount(prev => prev + newMatchesCount);
-        }
+        const newMatchesCount = matches.length > 0 ? 1 : 0;
+        setNewMatchCount(newMatchesCount);
       }
     });
 
@@ -455,7 +485,6 @@ const Game: React.FC = () => {
         // É um match! Adicionar aos matches
         const newMatch = {
           cardId: currentCard.id,
-          timestamp: new Date().toISOString(),
           cardTitle: currentCard.title,
           cardImage: currentCard.image
         };
@@ -516,42 +545,69 @@ const Game: React.FC = () => {
 
       <Collapse in={showMatches} sx={{ position: 'fixed', top: '80px', right: '20px', zIndex: 1000 }}>
         <MatchesPanel>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" sx={{ mb: 2, textAlign: 'center' }}>
             Seus Matches
           </Typography>
           {matches.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Nenhum match ainda. Continue jogando!
+            <Typography variant="body1" sx={{ textAlign: 'center', color: 'text.secondary' }}>
+              Nenhum match ainda
             </Typography>
           ) : (
-            matches.map((match) => {
-              const matchDate = parseTimestamp(match.timestamp);
-              return (
-                <MatchCard key={match.cardId}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 2 }}>
+              {matches.map((match) => (
+                <MatchCard 
+                  key={match.cardId}
+                  onClick={() => setSelectedMatch(match)}
+                  sx={{
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                    }
+                  }}
+                >
+                  <Box sx={{ position: 'relative', paddingTop: '100%' }}>
                     <img
                       src={match.cardImage}
                       alt={match.cardTitle}
                       style={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: 8,
-                        marginRight: 10,
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
                         objectFit: 'cover',
+                        borderRadius: '8px',
                       }}
                     />
-                    <Box>
-                      <Typography variant="subtitle1" gutterBottom>
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+                        padding: '20px 10px 10px',
+                        borderRadius: '0 0 8px 8px',
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          color: 'white',
+                          textAlign: 'center',
+                          fontSize: '0.9rem',
+                          fontWeight: 'bold',
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                        }}
+                      >
                         {match.cardTitle}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {matchDate.toLocaleDateString()}
                       </Typography>
                     </Box>
                   </Box>
                 </MatchCard>
-              );
-            })
+              ))}
+            </Box>
           )}
         </MatchesPanel>
       </Collapse>
@@ -725,6 +781,32 @@ const Game: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal para exibir o match selecionado */}
+      {selectedMatch && (
+        <ModalOverlay onClick={() => setSelectedMatch(null)}>
+          <ModalContent onClick={e => e.stopPropagation()}>
+            <CloseButton onClick={() => setSelectedMatch(null)}>
+              <CloseIcon />
+            </CloseButton>
+            <Box sx={{ textAlign: 'center' }}>
+              <img
+                src={selectedMatch.cardImage}
+                alt={selectedMatch.cardTitle}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '70vh',
+                  borderRadius: '10px',
+                  marginBottom: '20px',
+                }}
+              />
+              <Typography variant="h5" sx={{ mt: 2 }}>
+                {selectedMatch.cardTitle}
+              </Typography>
+            </Box>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
