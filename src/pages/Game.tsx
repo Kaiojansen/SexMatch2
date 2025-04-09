@@ -255,9 +255,13 @@ const Game: React.FC = () => {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           console.log('Dados do usuário encontrados:', userData);
-          if (userData.partnerId) {
-            console.log('Parceiro encontrado:', userData.partnerId);
-            setPartnerId(userData.partnerId);
+          
+          // Verifica se existe o array de partners
+          if (userData.partners && userData.partners.length > 0) {
+            // Pega o primeiro parceiro do array
+            const partnerId = userData.partners[0];
+            console.log('Parceiro encontrado:', partnerId);
+            setPartnerId(partnerId);
           } else {
             console.log('Usuário não tem parceiro vinculado');
             setError('Você precisa ter um parceiro vinculado para jogar');
