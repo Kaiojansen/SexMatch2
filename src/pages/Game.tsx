@@ -101,7 +101,6 @@ const CardWrapper = styled(Box)(({ theme }) => ({
   margin: '0 auto',
   borderRadius: '24px',
   overflow: 'hidden',
-  boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
   '& .card': {
     position: 'relative',
     width: '100%',
@@ -990,8 +989,7 @@ const Game: React.FC = () => {
                       borderRadius: '12px',
                       fontSize: '1.5rem',
                       fontWeight: 'bold',
-                      opacity: 0.9,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      opacity: 0.9
                     }}
                   >
                     {swipeDirection === 'right' ? 'LIKE' : 'NOPE'}
