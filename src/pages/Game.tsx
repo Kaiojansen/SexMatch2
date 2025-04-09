@@ -463,15 +463,18 @@ const Game: React.FC = () => {
         setMatches(data.matches || []);
         
         // Carregar cartas marcadas como "quero muito" pelo parceiro
-        const partnerFires = isUser1 ? data.fire_user2 : data.fire_user1;
-        const userFires = isUser1 ? data.fire_user1 : data.fire_user2;
+        const partnerFires = isUser1 ? data.fire_user2 || [] : data.fire_user1 || [];
+        const myFires = isUser1 ? data.fire_user1 || [] : data.fire_user2 || [];
         
-        // Atualizar o estado dos cards marcados
+        // Atualizar o estado dos cards marcados pelo parceiro
         const markedCards: { [key: string]: boolean } = {};
         partnerFires.forEach((cardId: string) => {
           markedCards[cardId] = true;
         });
         setHotMarkedCards(markedCards);
+
+        // Atualizar meus fires
+        setUserFires(myFires);
       }
     });
 
@@ -653,7 +656,7 @@ const Game: React.FC = () => {
       const isUser1 = currentUser.uid === user1;
 
       // Verificar se já marcou esta carta
-      const userFires = isUser1 ? data.fire_user1 : data.fire_user2;
+      const userFires = isUser1 ? data.fire_user1 || [] : data.fire_user2 || [];
       if (userFires.includes(match.cardId)) {
         console.log('Carta já foi marcada como quero muito');
         return;
@@ -665,10 +668,7 @@ const Game: React.FC = () => {
       });
 
       // Atualizar o estado local
-      setHotMarkedCards(prev => ({
-        ...prev,
-        [match.cardId]: true
-      }));
+      setUserFires(prev => [...prev, match.cardId]);
 
       console.log('Carta marcada como quero muito com sucesso!');
     } catch (error) {
@@ -730,7 +730,7 @@ const Game: React.FC = () => {
                   }}
                 >
                   {/* Mostrar HOT apenas quando o outro usuário marcou como "quero muito" */}
-                  {currentUser && match && hotMarkedCards[match.cardId] && (
+                  {currentUser && hotMarkedCards[match.cardId] && (
                     <HotCardIndicator>
                       <Box sx={{ 
                         display: 'flex', 
@@ -742,9 +742,7 @@ const Game: React.FC = () => {
                         boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)',
                         animation: 'pulse 2s infinite'
                       }}>
-                        <LocalFireDepartmentIcon sx={{ 
-                          fontSize: '1rem'
-                        }} />
+                        <LocalFireDepartmentIcon sx={{ fontSize: '1rem' }} />
                         <Typography variant="caption" sx={{ 
                           color: '#fff',
                           fontWeight: 'bold',
@@ -992,7 +990,8 @@ const Game: React.FC = () => {
               overflow: 'hidden',
               position: 'relative'
             }}>
-              {selectedMatch && currentUser && hotMarkedCards[selectedMatch.cardId] && (
+              {/* Mostrar HOT apenas quando o outro usuário marcou como "quero muito" */}
+              {currentUser && hotMarkedCards[selectedMatch.cardId] && (
                 <Box sx={{ 
                   position: 'absolute',
                   top: '16px',
@@ -1028,10 +1027,10 @@ const Game: React.FC = () => {
               <HotButton
                 onClick={() => handleMarkAsHot(selectedMatch)}
                 startIcon={<LocalFireDepartmentIcon />}
-                className={hotMarkedCards[selectedMatch.cardId] ? 'marked' : ''}
-                disabled={hotMarkedCards[selectedMatch.cardId]}
+                className={userFires.includes(selectedMatch.cardId) ? 'marked' : ''}
+                disabled={userFires.includes(selectedMatch.cardId)}
               >
-                {hotMarkedCards[selectedMatch.cardId] ? 'MUITO QUENTE! 🔥' : 'QUERO MUITO! 🔥'}
+                {userFires.includes(selectedMatch.cardId) ? 'MUITO QUENTE! 🔥' : 'QUERO MUITO! 🔥'}
               </HotButton>
             </Box>
           </ModalContent>
