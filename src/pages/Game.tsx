@@ -63,6 +63,8 @@ interface PartnershipData {
   id: string;
   user1: string;
   user2: string;
+  user1Name: string;
+  user2Name: string;
   createdAt: Timestamp;
   likes_user1: string[];
   likes_user2: string[];
@@ -466,25 +468,23 @@ const Game: React.FC = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       if (!currentUser || !urlPartnerId) {
-        console.log('Usuário não está logado ou ID do parceiro não fornecido');
+        console.log('Usuário ou ID do parceiro não encontrado');
+        setError('Dados inválidos');
+        navigate('/dashboard');
         return;
       }
-      
-      console.log('Buscando dados do usuário:', currentUser.uid);
-      try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          console.log('Dados do usuário encontrados:', userData);
-          
-          // Verificar se o parceiro da URL está na lista de parceiros do usuário
-          if (userData.partners && userData.partners.includes(urlPartnerId)) {
-            console.log('Parceiro válido encontrado:', urlPartnerId);
-            setPartnerId(urlPartnerId);
 
-            // Criar ou verificar documento de parceria
+      try {
+        const userDoc = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userDoc);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const userPartners = userData.partners || [];
+
+          if (userPartners.includes(urlPartnerId)) {
+            setPartnerId(urlPartnerId);
             const partnershipId = [currentUser.uid, urlPartnerId].sort().join('_');
-            console.log('ID da parceria gerado:', partnershipId);
             const partnershipRef = doc(db, 'partners', partnershipId);
             const partnershipDoc = await getDoc(partnershipRef);
 
@@ -492,10 +492,20 @@ const Game: React.FC = () => {
               console.log('Criando novo documento de parceria:', partnershipId);
               // Criar documento inicial de parceria
               const [user1, user2] = [currentUser.uid, urlPartnerId].sort();
+              
+              // Buscar nomes dos usuários
+              const user1Doc = await getDoc(doc(db, 'users', user1));
+              const user2Doc = await getDoc(doc(db, 'users', user2));
+              
+              const user1Name = user1Doc.exists() ? user1Doc.data().name || '' : '';
+              const user2Name = user2Doc.exists() ? user2Doc.data().name || '' : '';
+
               await setDoc(partnershipRef, {
                 id: partnershipId,
                 user1: user1,
                 user2: user2,
+                user1Name: user1Name,
+                user2Name: user2Name,
                 createdAt: serverTimestamp(),
                 likes_user1: [], 
                 likes_user2: [], 
