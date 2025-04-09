@@ -55,6 +55,8 @@ interface Match {
   cardId: string;
   cardTitle: string;
   cardImage: string;
+  fire_user1?: { [key: string]: boolean };
+  fire_user2?: { [key: string]: boolean };
 }
 
 interface PartnershipData {
@@ -600,7 +602,9 @@ const Game: React.FC = () => {
         const newMatch = {
           cardId: currentCard.id,
           cardTitle: currentCard.title,
-          cardImage: currentCard.image
+          cardImage: currentCard.image,
+          fire_user1: {},
+          fire_user2: {}
         };
 
         try {
@@ -1018,29 +1022,19 @@ const Game: React.FC = () => {
               overflow: 'hidden',
               position: 'relative'
             }}>
-              {selectedMatch.hotStatus && selectedMatch.hotStatus[partnerId || ''] && (
+              {selectedMatch.fire_user1 && selectedMatch.fire_user1[partnerId || ''] && (
                 <Box sx={{ 
                   position: 'absolute',
                   top: '16px',
                   right: '16px',
-                  zIndex: 2,
-                  display: 'flex',
-                  gap: '8px',
-                  alignItems: 'center',
-                  background: 'linear-gradient(45deg, #ff4b6e, #ff1f4b)',
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)',
-                  animation: 'pulse 2s infinite',
+                  backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
                 }}>
-                  <LocalFireDepartmentIcon />
-                  <Typography sx={{ 
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
-                  }}>
-                    SEU PARCEIRO QUER MUITO!
-                  </Typography>
+                  Quero Muito!
                 </Box>
               )}
               <img
