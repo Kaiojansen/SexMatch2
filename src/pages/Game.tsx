@@ -94,81 +94,102 @@ const StyledContainer = styled(Container)({
 });
 
 const CardWrapper = styled(Box)(({ theme }) => ({
+  position: 'relative',
   width: '100%',
   maxWidth: '400px',
   height: '600px',
-  position: 'relative',
   margin: '0 auto',
-  [theme.breakpoints.down('sm')]: {
-    height: '80vh',
-    maxWidth: '100%',
-    margin: '0 16px'
+  borderRadius: '24px',
+  overflow: 'hidden',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+  '& .card': {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    borderRadius: '24px',
+    overflow: 'hidden',
+    background: '#000',
+    '& .card-image': {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      filter: 'brightness(0.9)',
+      transition: 'all 0.3s ease'
+    },
+    '& .card-content': {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: '60px 24px 24px',
+      background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 20%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.3) 60%, rgba(0,0,0,0.1) 80%, transparent 100%)',
+      backdropFilter: 'blur(5px)',
+      '& .card-title': {
+        color: '#fff',
+        fontSize: '2.5rem',
+        fontWeight: 300,
+        marginBottom: '12px',
+        fontFamily: '"Staatliches", cursive',
+        letterSpacing: '-0.5px',
+        textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+      },
+      '& .card-description': {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: '1rem',
+        fontWeight: 400,
+        opacity: 0.9,
+        textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+        marginBottom: '20px'
+      }
+    }
   }
 }));
 
 const CardContainer = styled(Box)(({ theme }) => ({
   position: 'relative',
   width: '100%',
-  maxWidth: '400px',
-  height: '600px',
-  margin: '0 auto',
-  perspective: '1000px',
-  '& .card': {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    transformStyle: 'preserve-3d',
-    transition: 'transform 0.3s ease',
-    '& .card-content': {
-      position: 'relative',
-      width: '100%',
-      height: '100%',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-      borderRadius: '20px',
-      overflow: 'hidden',
-      '& .card-image': {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-      },
-      '& .card-overlay': {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: '20px',
-        background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.85) 20%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%)',
-        backdropFilter: 'blur(8px)',
-        '& .card-title': {
-          color: 'rgba(241, 0, 0, 0.5)',
-          fontSize: '1.8rem',
-          fontWeight: 700,
-          marginBottom: '8px',
-          textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-        },
-        '& .card-description': {
-          color: 'rgba(255,255,255,0.95)',
-          fontSize: '1rem',
-          textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-        },
-      },
-      '& .swipe-indicator': {
-        position: 'absolute',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        fontSize: '3rem',
-        opacity: 0.8,
-        '&.right': {
-          right: '20px',
-          color: '#4CAF50',
-        },
-        '&.left': {
-          left: '20px',
-          color: '#F44336',
-        },
-      },
-    },
+  height: '100%',
+  overflow: 'hidden',
+  cursor: 'grab',
+  '&:active': {
+    cursor: 'grabbing'
+  }
+}));
+
+const CardImage = styled('img')({
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  position: 'absolute',
+  top: 0,
+  left: 0,
+});
+
+const CardContentWrapper = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  padding: '120px 24px 24px',
+  background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 40%, transparent 100%)',
+  backdropFilter: 'blur(10px)',
+  zIndex: 1,
+  '& .card-title': {
+    color: '#fff',
+    fontSize: '2.5rem',
+    fontWeight: 700,
+    marginBottom: '8px',
+    fontFamily: '"Staatliches", cursive',
+    letterSpacing: '1px',
+    textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
   },
+  '& .card-description': {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: '1.2rem',
+    fontWeight: 400,
+    opacity: 0.9,
+    textShadow: '1px 1px 2px rgba(0,0,0,0.3)'
+  }
 }));
 
 const StyledCard = styled(motion.div)({
@@ -186,15 +207,6 @@ const StyledCard = styled(motion.div)({
   '&:active': {
     cursor: 'grabbing',
   },
-});
-
-const CardImage = styled('img')({
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover',
-  position: 'absolute',
-  top: 0,
-  left: 0,
 });
 
 const CardOverlay = styled(Box)({
@@ -940,52 +952,52 @@ const Game: React.FC = () => {
         <CardWrapper>
           <AnimatePresence mode="wait">
             {currentCardIndex < cards.length ? (
-              <StyledCard
-                key={cards[currentCardIndex].id}
+              <motion.div
+                className="card"
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 onDrag={handleDrag}
                 onDragEnd={handleDragEnd}
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -200 }}
-                style={{
+                animate={{
                   x: translateX,
                   rotate: rotate,
+                  scale: swipeDirection ? 0.98 : 1,
+                  transition: { type: "spring", stiffness: 200, damping: 20 }
                 }}
               >
-                <CardImage 
+                <img 
                   src={cards[currentCardIndex].image} 
-                  alt={cards[currentCardIndex].title} 
+                  alt={cards[currentCardIndex].title}
+                  className="card-image"
+                  draggable={false}
                 />
-                <CardOverlay>
-                  <Typography variant="h5" gutterBottom sx={{ 
-                    fontWeight: 600, 
-                    color: '#ff4b6e',
-                    fontSize: { xs: '1.5rem', sm: '1.8rem' }
-                  }}>
-                    {cards[currentCardIndex].title}
-                  </Typography>
-                  <Typography variant="body1" sx={{ 
-                    color: 'rgba(255,255,255,0.8)',
-                    fontSize: { xs: '0.9rem', sm: '1rem' }
-                  }}>
-                    {cards[currentCardIndex].description}
-                  </Typography>
-                </CardOverlay>
-                <SwipeIndicator 
-                  direction="left" 
-                  sx={{ opacity: swipeDirection === 'left' ? 1 : 0 }}
-                >
-                  NOPE
-                </SwipeIndicator>
-                <SwipeIndicator 
-                  direction="right" 
-                  sx={{ opacity: swipeDirection === 'right' ? 1 : 0 }}
-                >
-                  LIKE
-                </SwipeIndicator>
-              </StyledCard>
+                <div className="card-content">
+                  <Typography className="card-title">{cards[currentCardIndex].title}</Typography>
+                  <Typography className="card-description">{cards[currentCardIndex].description}</Typography>
+                </div>
+                {swipeDirection && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: swipeDirection === 'left' ? '10%' : undefined,
+                      right: swipeDirection === 'right' ? '10%' : undefined,
+                      transform: 'translateY(-50%)',
+                      backgroundColor: 'transparent',
+                      backdropFilter: 'blur(8px)',
+                      color: '#fff',
+                      padding: '16px 32px',
+                      borderRadius: '12px',
+                      fontSize: '1.5rem',
+                      fontWeight: 'bold',
+                      opacity: 0.9,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {swipeDirection === 'right' ? 'LIKE' : 'NOPE'}
+                  </Box>
+                )}
+              </motion.div>
             ) : (
               <Box
                 sx={{
