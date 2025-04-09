@@ -2,7 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, collection, query, getDocs, arrayUnion, arrayRemove, onSnapshot, where, writeBatch } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  setDoc,
+  updateDoc, 
+  collection, 
+  query, 
+  getDocs, 
+  where, 
+  onSnapshot,
+  arrayUnion,
+  arrayRemove,
+  writeBatch,
+  serverTimestamp
+} from 'firebase/firestore';
 import {
   Box,
   Container,
@@ -13,7 +27,6 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  LinearProgress,
   Button,
   Badge,
   Collapse,
@@ -35,38 +48,20 @@ interface CardData {
   category: string;
 }
 
-const StyledContainer = styled(Container)({
-  background: 'linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(40,0,0,0.95) 100%)',
-  minHeight: '100vh',
-  position: 'relative',
-  padding: 0,
-  overflow: 'hidden',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'url(https://source.unsplash.com/1920x1080/?dark,pattern)',
-    opacity: 0.1,
-    zIndex: 0,
-    pointerEvents: 'none',
-  }
-});
+interface Match {
+  cardId: string;
+  timestamp: any;
+}
 
-const CardWrapper = styled(Box)(({ theme }) => ({
-  width: '100%',
-  maxWidth: '400px',
-  height: '600px',
-  position: 'relative',
-  margin: '0 auto',
-  [theme.breakpoints.down('sm')]: {
-    height: '80vh',
-    maxWidth: '100%',
-    margin: '0 16px'
-  }
-}));
+const GameContainer = styled(Container)({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  minHeight: '100vh',
+  padding: '20px',
+  background: 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)',
+  color: '#fff',
+});
 
 const StyledCard = styled(motion.div)({
   position: 'relative',
@@ -89,6 +84,9 @@ const CardImage = styled('img')({
   width: '100%',
   height: '100%',
   objectFit: 'cover',
+  position: 'absolute',
+  top: 0,
+  left: 0,
 });
 
 const CardOverlay = styled(Box)({
@@ -96,590 +94,390 @@ const CardOverlay = styled(Box)({
   bottom: 0,
   left: 0,
   right: 0,
-  padding: '24px',
+  padding: '20px',
   background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)',
-  color: 'white',
+  color: '#fff',
+  textAlign: 'left',
 });
 
-const ActionButtons = styled(Box)(({ theme }) => ({
-  position: 'fixed',
-  bottom: '5%',
-  left: '50%',
-  transform: 'translateX(-50%)',
-  display: 'flex',
-  justifyContent: 'center',
-  gap: theme.spacing(4),
-  zIndex: 10,
-  [theme.breakpoints.down('sm')]: {
-    bottom: '3%',
-    gap: theme.spacing(3),
-  }
-}));
-
-const ActionButton = styled(IconButton)(({ theme }) => ({
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  backdropFilter: 'blur(5px)',
+const ActionButton = styled(IconButton)({
+  background: 'rgba(255, 255, 255, 0.2)',
+  backdropFilter: 'blur(10px)',
   border: '2px solid',
-  padding: '20px',
+  margin: '0 10px',
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'scale(1.1)',
   },
-  '&.like': {
-    borderColor: '#ff4b6e',
-    '&:hover': {
-      backgroundColor: 'rgba(255, 75, 110, 0.2)',
-    }
-  },
-  '&.dislike': {
-    borderColor: '#666',
-    '&:hover': {
-      backgroundColor: 'rgba(102, 102, 102, 0.2)',
-    }
-  },
-  [theme.breakpoints.down('sm')]: {
-    padding: '15px',
-  }
-}));
+});
 
-const SwipeIndicator = styled(Box)<{ direction: 'left' | 'right' }>(({ direction }) => ({
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  ...(direction === 'left' ? { left: '20px' } : { right: '20px' }),
-  padding: '8px 16px',
-  borderRadius: '8px',
-  background: direction === 'left' ? 'rgba(255, 0, 0, 0.8)' : 'rgba(0, 255, 0, 0.8)',
-  color: 'white',
-  fontWeight: 'bold',
-  opacity: 0,
-  zIndex: 10,
-}));
-
-const MatchesButton = styled(IconButton)(({ theme }) => ({
+const MatchesButton = styled(Button)({
   position: 'fixed',
-  top: '20px',
+  bottom: '20px',
   right: '20px',
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  backdropFilter: 'blur(5px)',
-  border: '2px solid #ff4b6e',
-  padding: '12px',
-  transition: 'all 0.3s ease',
+  borderRadius: '50%',
+  width: '60px',
+  height: '60px',
+  minWidth: 'unset',
+  padding: 0,
+  background: 'linear-gradient(45deg, #FF3366 30%, #FF9933 90%)',
+  boxShadow: '0 3px 5px 2px rgba(255, 105, 135, .3)',
   '&:hover': {
-    transform: 'scale(1.1)',
-    backgroundColor: 'rgba(255, 75, 110, 0.2)',
+    background: 'linear-gradient(45deg, #FF3366 60%, #FF9933 90%)',
   },
-  zIndex: 1000,
-}));
+});
 
-const MatchesPanel = styled(Box)(({ theme }) => ({
+const MatchesPanel = styled(Box)({
   position: 'fixed',
-  top: '80px',
+  bottom: '90px',
   right: '20px',
   width: '300px',
-  maxHeight: 'calc(100vh - 100px)',
-  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-  backdropFilter: 'blur(10px)',
-  borderRadius: '20px',
-  border: '1px solid rgba(255, 75, 110, 0.3)',
-  padding: theme.spacing(2),
+  maxHeight: '400px',
   overflowY: 'auto',
-  zIndex: 999,
+  background: 'rgba(0, 0, 0, 0.9)',
+  borderRadius: '16px',
+  padding: '20px',
+  backdropFilter: 'blur(10px)',
   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-}));
-
-const MatchCard = styled(Card)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
-  backgroundColor: 'rgba(255, 75, 110, 0.1)',
-  border: '1px solid rgba(255, 75, 110, 0.3)',
-  borderRadius: '12px',
-  overflow: 'hidden',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'scale(1.02)',
-    borderColor: '#ff4b6e',
-  },
-}));
-
-const GameCard = ({ card, onSwipe, isProcessing }: { card: CardData; onSwipe: (direction: 'left' | 'right') => void; isProcessing: boolean }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [currentX, setCurrentX] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
-
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
-    if (isProcessing) return;
-    setIsDragging(true);
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    setStartX(clientX);
-    setCurrentX(clientX);
-    setSwipeDirection(null);
-  };
-
-  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDragging || isProcessing) return;
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    setCurrentX(clientX);
-    
-    // Determinar direção do swipe
-    const deltaX = clientX - startX;
-    if (Math.abs(deltaX) > 50) { // Threshold para mostrar direção
-      setSwipeDirection(deltaX > 0 ? 'right' : 'left');
-    } else {
-      setSwipeDirection(null);
-    }
-  };
-
-  const handleDragEnd = () => {
-    if (!isDragging || isProcessing) return;
-    setIsDragging(false);
-    
-    const deltaX = currentX - startX;
-    const threshold = window.innerWidth * 0.25;
-    
-    if (Math.abs(deltaX) > threshold) {
-      onSwipe(deltaX > 0 ? 'right' : 'left');
-    } else {
-      // Animação de retorno suave
-      setCurrentX(startX);
-      setSwipeDirection(null);
-    }
-  };
-
-  const translateX = isDragging ? currentX - startX : 0;
-  const rotate = translateX * 0.1;
-
-  return (
-    <StyledCard
-      style={{
-        transform: `translateX(${translateX}px) rotate(${rotate}deg)`,
-        cursor: isProcessing ? 'not-allowed' : 'grab',
-        opacity: isProcessing ? 0.7 : 1,
-        transition: isDragging ? 'none' : 'transform 0.3s ease-out',
-        backgroundColor: swipeDirection === 'right' ? 'rgba(76, 175, 80, 0.1)' : 
-                      swipeDirection === 'left' ? 'rgba(244, 67, 54, 0.1)' : 'transparent'
-      }}
-      onMouseDown={handleDragStart}
-      onMouseMove={handleDragMove}
-      onMouseUp={handleDragEnd}
-      onMouseLeave={handleDragEnd}
-      onTouchStart={handleDragStart}
-      onTouchMove={handleDragMove}
-      onTouchEnd={handleDragEnd}
-    >
-      <CardImage src={card.image} alt={card.title} />
-      <CardContent>
-        <Typography variant="h6" component="h2" gutterBottom>
-          {card.title}
-        </Typography>
-        {swipeDirection && (
-          <SwipeIndicator direction={swipeDirection}>
-            {swipeDirection === 'right' ? '👍 Like' : '👎 Dislike'}
-          </SwipeIndicator>
-        )}
-      </CardContent>
-    </StyledCard>
-  );
-};
+});
 
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
-  const { partnerId } = useParams<{ partnerId: string }>();
   const navigate = useNavigate();
   const [cards, setCards] = useState<CardData[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [dragConstraints, setDragConstraints] = useState({ left: 0, right: 0 });
+  const [translateX, setTranslateX] = useState(0);
+  const [rotate, setRotate] = useState(0);
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [matchedCard, setMatchedCard] = useState<CardData | null>(null);
-  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showMatches, setShowMatches] = useState(false);
-  const [matches, setMatches] = useState<CardData[]>([]);
-  const [newMatch, setNewMatch] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [newMatchCount, setNewMatchCount] = useState(0);
+  const [partnerId, setPartnerId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser || !partnerId) {
-      navigate('/dashboard');
-      return;
-    }
-
-    const fetchCards = async () => {
-      try {
-        setIsLoading(true);
-        const cardsRef = collection(db, 'cards');
-        const q = query(cardsRef);
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedCards = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as CardData[];
-
-        // Embaralhar as cartas
-        const shuffledCards = fetchedCards.sort(() => Math.random() - 0.5);
-        setCards(shuffledCards);
-      } catch (error) {
-        console.error('Error fetching cards:', error);
-        setError('Erro ao carregar as cartas. Tente novamente.');
-      } finally {
-        setIsLoading(false);
+    const fetchUserData = async () => {
+      if (!currentUser) return;
+      
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (userDoc.exists()) {
+        setPartnerId(userDoc.data().partnerId);
       }
     };
 
-    fetchCards();
-  }, [currentUser, partnerId, navigate]);
+    fetchUserData();
+  }, [currentUser]);
 
-  // Melhorar o monitoramento de matches
+  useEffect(() => {
+    const fetchCards = async () => {
+      const cardsCollection = collection(db, 'cards');
+      const cardsSnapshot = await getDocs(cardsCollection);
+      const fetchedCards = cardsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CardData[];
+      setCards(fetchedCards);
+    };
+
+    fetchCards();
+  }, []);
+
   useEffect(() => {
     if (!currentUser || !partnerId) return;
 
-    const userDoc = doc(db, 'users', currentUser.uid);
-    const unsubscribe = onSnapshot(userDoc, async (doc) => {
-      if (doc.exists()) {
-        const userData = doc.data();
-        if (userData.matches) {
-          try {
-            // Buscar apenas as cartas que são matches
-            const matchesRef = collection(db, 'cards');
-            const matchesQuery = query(matchesRef, where('id', 'in', userData.matches));
-            const matchesSnapshot = await getDocs(matchesQuery);
-            
-            const matchedCards = matchesSnapshot.docs
-              .map(doc => ({ id: doc.id, ...doc.data() })) as CardData[];
-            
-            setMatches(matchedCards);
-            
-            // Verificar se há um novo match
-            if (userData.recentMatch) {
-              const matchedCard = matchedCards.find(card => card.id === userData.recentMatch);
-              if (matchedCard) {
-                setNewMatch(true);
-                setMatchedCard(matchedCard);
-                setShowMatchDialog(true);
-                
-                // Limpar o recentMatch após mostrar o diálogo
-                setTimeout(async () => {
-                  await updateDoc(userDoc, { recentMatch: null });
-                }, 1000);
-              }
-            }
-          } catch (error) {
-            console.error('Erro ao buscar matches:', error);
-          }
+    // Escutar por novos matches
+    const matchesRef = collection(db, 'matches');
+    const q = query(
+      matchesRef,
+      where('users', 'array-contains', currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newMatches: Match[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.users.includes(partnerId)) {
+          newMatches.push({
+            cardId: data.cardId,
+            timestamp: data.timestamp
+          });
         }
-      }
+      });
+      setMatches(newMatches);
+      setNewMatchCount(newMatches.length);
     });
 
     return () => unsubscribe();
   }, [currentUser, partnerId]);
 
-  useEffect(() => {
-    const updateDragConstraints = () => {
-      setDragConstraints({
-        left: -window.innerWidth / 2,
-        right: window.innerWidth / 2,
-      });
-    };
-
-    window.addEventListener('resize', updateDragConstraints);
-    updateDragConstraints();
-
-    return () => window.removeEventListener('resize', updateDragConstraints);
-  }, []);
-
-  const handleSwipe = async (direction: 'left' | 'right') => {
-    if (!currentUser || !cards[currentCardIndex] || !partnerId) return;
-
-    const cardId = cards[currentCardIndex].id;
-    const userDoc = doc(db, 'users', currentUser.uid);
-    const partnerDoc = doc(db, 'users', partnerId);
-
-    try {
-      setIsProcessing(true);
-
-      // Verificar se já interagiu com esta carta
-      const userData = await getDoc(userDoc);
-      if (userData.exists()) {
-        const { likes = [], dislikes = [] } = userData.data();
-        if (likes.includes(cardId) || dislikes.includes(cardId)) {
-          setIsProcessing(false);
-          return;
-        }
-      }
-
-      if (direction === 'right') {
-        // Adicionar aos likes
-        await updateDoc(userDoc, {
-          likes: arrayUnion(cardId)
-        });
-
-        // Verificar match
-        const partnerData = await getDoc(partnerDoc);
-        if (partnerData.exists() && partnerData.data().likes?.includes(cardId)) {
-          const batch = writeBatch(db);
-          batch.update(userDoc, {
-            matches: arrayUnion(cardId),
-            recentMatch: cardId,
-            lastMatchTime: new Date().toISOString()
-          });
-          batch.update(partnerDoc, {
-            matches: arrayUnion(cardId),
-            recentMatch: cardId,
-            lastMatchTime: new Date().toISOString()
-          });
-          await batch.commit();
-        }
-      } else {
-        await updateDoc(userDoc, {
-          dislikes: arrayUnion(cardId)
-        });
-      }
-
-      // Remover carta atual
-      setCards(prevCards => prevCards.filter((_, index) => index !== currentCardIndex));
-    } catch (error) {
-      console.error('Erro ao processar swipe:', error);
-      setError('Erro ao processar sua escolha. Tente novamente.');
-      setTimeout(() => setError(''), 3000);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleDrag = (event: any, info: any) => {
-    if (info.offset.x > 50) {
-      setSwipeDirection('right');
-    } else if (info.offset.x < -50) {
-      setSwipeDirection('left');
-    } else {
-      setSwipeDirection(null);
+    setTranslateX(info.offset.x);
+    setRotate(info.offset.x * 0.1);
+  };
+
+  const handleDragEnd = async (event: any, info: any) => {
+    const swipeThreshold = 100;
+    
+    if (info.offset.x > swipeThreshold) {
+      await handleLike();
+    } else if (info.offset.x < -swipeThreshold) {
+      handleDislike();
+    }
+    
+    setTranslateX(0);
+    setRotate(0);
+  };
+
+  const handleLike = async () => {
+    if (!currentUser || !partnerId || currentCardIndex >= cards.length) return;
+
+    const currentCard = cards[currentCardIndex];
+    
+    try {
+      // Criar ou atualizar o documento de likes para o card atual
+      const likeRef = doc(db, 'likes', `${currentCard.id}_${currentUser.uid}`);
+      await setDoc(likeRef, {
+        userId: currentUser.uid,
+        cardId: currentCard.id,
+        timestamp: serverTimestamp()
+      });
+
+      // Verificar se o parceiro também deu like
+      const partnerLikeRef = doc(db, 'likes', `${currentCard.id}_${partnerId}`);
+      const partnerLikeDoc = await getDoc(partnerLikeRef);
+
+      if (partnerLikeDoc.exists()) {
+        // É um match! Criar documento de match
+        const matchRef = doc(db, 'matches', `${currentCard.id}_${currentUser.uid}_${partnerId}`);
+        await setDoc(matchRef, {
+          cardId: currentCard.id,
+          users: [currentUser.uid, partnerId],
+          timestamp: serverTimestamp()
+        });
+
+        setMatchedCard(currentCard);
+        setShowMatchDialog(true);
+      }
+
+      // Avançar para o próximo card
+      setCurrentCardIndex(prev => prev + 1);
+    } catch (error) {
+      console.error('Error handling like:', error);
     }
   };
 
-  const handleDragEnd = (event: any, info: any) => {
-    const offset = info.offset.x;
-    const velocity = info.velocity.x;
+  const handleDislike = () => {
+    setCurrentCardIndex(prev => prev + 1);
+  };
 
-    if (Math.abs(velocity) >= 800 || Math.abs(offset) >= 100) {
-      if (offset > 0) {
-        handleSwipe('right');
-      } else {
-        handleSwipe('left');
-      }
-    }
+  const dragConstraints = {
+    left: 0,
+    right: 0,
   };
 
   return (
-    <StyledContainer maxWidth={false}>
-      <MatchesButton onClick={() => setShowMatches(!showMatches)}>
-        <Badge badgeContent={newMatch ? "!" : 0} color="error">
-          <FavoriteIcon />
-        </Badge>
-      </MatchesButton>
-
-      <Collapse in={showMatches} sx={{ position: 'fixed', top: '80px', right: '20px', zIndex: 1000 }}>
-        <MatchesPanel>
-          <Typography variant="h6" gutterBottom>
-            Seus Matches
-          </Typography>
-          {matches.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Nenhum match ainda. Continue jogando!
-            </Typography>
-          ) : (
-            matches.map(match => (
-              <MatchCard key={match.id}>
-                <Typography variant="subtitle1" gutterBottom>
-                  {match.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {match.description}
-                </Typography>
-              </MatchCard>
-            ))
-          )}
-        </MatchesPanel>
-      </Collapse>
-
-      <Box 
-        sx={{ 
-          py: { xs: 2, sm: 4, md: 6 },
-          px: { xs: 2, sm: 3 },
-          position: 'relative',
-          zIndex: 1,
+    <GameContainer>
+      <Box
+        sx={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          minHeight: '100vh'
+          width: '100%',
+          maxWidth: '500px',
+          margin: '0 auto',
+          position: 'relative',
+          minHeight: '80vh',
         }}
       >
-        <Typography 
-          variant="h3" 
-          gutterBottom 
-          sx={{ 
-            fontWeight: 'bold',
-            color: '#fff',
-            textAlign: 'center',
-            mb: { xs: 2, sm: 4 },
-            fontSize: { xs: '1.8rem', sm: '2.5rem', md: '3rem' },
-            textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-            fontFamily: '"Playfair Display", serif',
-          }}
-        >
-          Descubra Suas Fantasias
-        </Typography>
-
-        <CardWrapper>
-          <AnimatePresence mode="wait">
-            {currentCardIndex < cards.length ? (
-              <StyledCard
-                key={cards[currentCardIndex].id}
-                drag="x"
-                dragConstraints={dragConstraints}
-                onDrag={handleDrag}
-                onDragEnd={handleDragEnd}
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -200 }}
-                whileDrag={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <CardImage 
-                  src={cards[currentCardIndex].image} 
-                  alt={cards[currentCardIndex].title} 
-                />
-                <CardOverlay>
-                  <Typography variant="h5" gutterBottom sx={{ 
-                    fontWeight: 600, 
-                    color: '#ff4b6e',
-                    fontSize: { xs: '1.5rem', sm: '1.8rem' }
-                  }}>
-                    {cards[currentCardIndex].title}
-                  </Typography>
-                  <Typography variant="body1" sx={{ 
-                    color: 'rgba(255,255,255,0.8)',
-                    fontSize: { xs: '0.9rem', sm: '1rem' }
-                  }}>
-                    {cards[currentCardIndex].description}
-                  </Typography>
-                </CardOverlay>
-                <SwipeIndicator 
-                  direction="left" 
-                  sx={{ opacity: swipeDirection === 'left' ? 1 : 0 }}
-                >
-                  NOPE
-                </SwipeIndicator>
-                <SwipeIndicator 
-                  direction="right" 
-                  sx={{ opacity: swipeDirection === 'right' ? 1 : 0 }}
-                >
-                  LIKE
-                </SwipeIndicator>
-              </StyledCard>
-            ) : (
-              <Box 
-                sx={{ 
-                  textAlign: 'center',
-                  p: 4,
-                  borderRadius: 2,
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255,255,255,0.2)'
-                }}
-              >
+        <AnimatePresence mode="wait">
+          {currentCardIndex < cards.length ? (
+            <StyledCard
+              key={cards[currentCardIndex].id}
+              drag="x"
+              dragConstraints={dragConstraints}
+              onDrag={handleDrag}
+              onDragEnd={handleDragEnd}
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: translateX < 0 ? -200 : 200 }}
+              style={{
+                x: translateX,
+                rotate: rotate,
+              }}
+            >
+              <CardImage src={cards[currentCardIndex].image} alt={cards[currentCardIndex].title} />
+              <CardOverlay>
                 <Typography variant="h5" gutterBottom>
-                  Todas as cartas foram visualizadas!
+                  {cards[currentCardIndex].title}
                 </Typography>
                 <Typography variant="body1">
-                  Volte mais tarde para novas cartas.
+                  {cards[currentCardIndex].description}
                 </Typography>
-              </Box>
-            )}
-          </AnimatePresence>
-        </CardWrapper>
+              </CardOverlay>
+            </StyledCard>
+          ) : (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '500px',
+                textAlign: 'center',
+                padding: '20px',
+              }}
+            >
+              <Typography variant="h5" gutterBottom>
+                Você viu todas as cartas por enquanto!
+              </Typography>
+              <Typography variant="body1">
+                Volte mais tarde para descobrir novas experiências com seu parceiro.
+              </Typography>
+            </Box>
+          )}
+        </AnimatePresence>
 
-        <ActionButtons>
-          <ActionButton 
-            className="dislike" 
-            onClick={() => handleSwipe('left')}
-            disabled={isProcessing}
+        {currentCardIndex < cards.length && (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '20px',
+            }}
           >
-            <CloseIcon />
-          </ActionButton>
-          <ActionButton 
-            className="like" 
-            onClick={() => handleSwipe('right')}
-            disabled={isProcessing}
-          >
-            <FavoriteIcon />
-          </ActionButton>
-        </ActionButtons>
+            <ActionButton
+              onClick={() => handleDislike()}
+              sx={{ borderColor: '#FF3366' }}
+            >
+              <CloseIcon sx={{ color: '#FF3366' }} />
+            </ActionButton>
+            <ActionButton
+              onClick={() => handleLike()}
+              sx={{ borderColor: '#33FF99' }}
+            >
+              <FavoriteIcon sx={{ color: '#33FF99' }} />
+            </ActionButton>
+          </Box>
+        )}
 
-        {/* Dialog de Match */}
-        <Dialog 
-          open={showMatchDialog} 
-          onClose={() => setShowMatchDialog(false)}
-          PaperProps={{
-            sx: {
-              borderRadius: 3,
-              maxWidth: 400,
-              width: '100%',
-              background: 'linear-gradient(135deg, rgba(20,20,20,0.95) 0%, rgba(40,0,0,0.95) 100%)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 75, 110, 0.3)',
-              color: 'white',
-              overflow: 'hidden'
-            }
-          }}
-        >
-          <Box sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'radial-gradient(circle at center, rgba(255,75,110,0.2) 0%, transparent 70%)',
-            pointerEvents: 'none'
-          }} />
-          <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#ff4b6e' }}>
-              É um Match! 🎉
+        <Badge badgeContent={newMatchCount} color="secondary">
+          <MatchesButton
+            onClick={() => {
+              setShowMatches(!showMatches);
+              setNewMatchCount(0);
+            }}
+          >
+            {showMatches ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
+          </MatchesButton>
+        </Badge>
+
+        <Collapse in={showMatches}>
+          <MatchesPanel>
+            <Typography variant="h6" gutterBottom>
+              Seus Matches
             </Typography>
-          </DialogTitle>
-          <DialogContent>
-            {matchedCard && (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <CardImage 
-                  src={matchedCard.image} 
-                  alt={matchedCard.title}
-                  sx={{ 
-                    height: 250,
-                    width: '100%',
-                    borderRadius: 2,
-                    mb: 3,
-                    border: '2px solid rgba(255,75,110,0.3)'
-                  }}
-                />
-                <Typography variant="h5" gutterBottom sx={{ color: '#ff4b6e' }}>
-                  {matchedCard.title}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                  Você e seu parceiro combinaram nesta fantasia!
-                </Typography>
-              </Box>
+            {matches.length > 0 ? (
+              matches.map((match, index) => {
+                const matchedCard = cards.find(card => card.id === match.cardId);
+                return matchedCard ? (
+                  <Box
+                    key={index}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: 2,
+                      padding: 1,
+                      borderRadius: 1,
+                      background: 'rgba(255, 255, 255, 0.1)',
+                    }}
+                  >
+                    <img
+                      src={matchedCard.image}
+                      alt={matchedCard.title}
+                      style={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: 8,
+                        marginRight: 10,
+                        objectFit: 'cover',
+                      }}
+                    />
+                    <Box>
+                      <Typography variant="subtitle1">
+                        {matchedCard.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {new Date(match.timestamp?.toDate()).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ) : null;
+              })
+            ) : (
+              <Typography variant="body2">
+                Ainda não há matches. Continue explorando!
+              </Typography>
             )}
-          </DialogContent>
-        </Dialog>
+          </MatchesPanel>
+        </Collapse>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
-          {error}
-        </Alert>
-      )}
-    </StyledContainer>
+      <Dialog
+        open={showMatchDialog}
+        onClose={() => setShowMatchDialog(false)}
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(33,33,33,0.9) 100%)',
+            borderRadius: '16px',
+            padding: '20px',
+            maxWidth: '400px',
+            width: '90%',
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: '#fff', textAlign: 'center' }}>
+          <LocalFireDepartmentIcon sx={{ fontSize: 40, color: '#FF3366' }} />
+          <Typography variant="h5">É um Match!</Typography>
+        </DialogTitle>
+        <DialogContent>
+          {matchedCard && (
+            <Box sx={{ textAlign: 'center' }}>
+              <img
+                src={matchedCard.image}
+                alt={matchedCard.title}
+                style={{
+                  width: '100%',
+                  height: '200px',
+                  objectFit: 'cover',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                }}
+              />
+              <Typography variant="h6" sx={{ color: '#fff', marginBottom: 1 }}>
+                {matchedCard.title}
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#ccc' }}>
+                Você e seu parceiro combinaram nesta experiência!
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => setShowMatchDialog(false)}
+                sx={{
+                  marginTop: 3,
+                  background: 'linear-gradient(45deg, #FF3366 30%, #FF9933 90%)',
+                  color: '#fff',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #FF3366 60%, #FF9933 90%)',
+                  },
+                }}
+              >
+                Continuar Explorando
+              </Button>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+    </GameContainer>
   );
 };
 
