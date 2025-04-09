@@ -272,6 +272,22 @@ const Game: React.FC = () => {
             const partnerId = userData.partners[0];
             console.log('Parceiro encontrado:', partnerId);
             setPartnerId(partnerId);
+
+            // Criar ou verificar documento de parceria
+            const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+            const partnershipRef = doc(db, 'partners', partnershipId);
+            const partnershipDoc = await getDoc(partnershipRef);
+
+            if (!partnershipDoc.exists()) {
+              // Criar documento inicial de parceria
+              await setDoc(partnershipRef, {
+                users: [currentUser.uid, partnerId],
+                createdAt: serverTimestamp(),
+                [`likes_${currentUser.uid}`]: [],
+                [`likes_${partnerId}`]: [],
+                matches: []
+              });
+            }
           } else {
             console.log('Usuário não tem parceiro vinculado');
             setError('Você precisa ter um parceiro vinculado para jogar');
@@ -319,49 +335,25 @@ const Game: React.FC = () => {
   useEffect(() => {
     if (!currentUser || !partnerId) return;
 
-    // Criar ou obter o documento de parceiros
+    // Escutar por atualizações no documento de parceria
     const partnershipId = [currentUser.uid, partnerId].sort().join('_');
     const partnershipRef = doc(db, 'partners', partnershipId);
 
     const unsubscribe = onSnapshot(partnershipRef, (doc) => {
-      try {
-        if (doc.exists()) {
-          const data = doc.data() as PartnershipData;
-          const matches = data.matches || [];
-          
-          // Converter os matches para o formato esperado pela interface
-          const formattedMatches: Match[] = matches.map((match: Match) => ({
-            cardId: match.cardId,
-            timestamp: match.timestamp,
-            cardTitle: match.cardTitle,
-            cardImage: match.cardImage
-          }));
-
-          // Ordenar matches por data, mais recentes primeiro
-          formattedMatches.sort((a: Match, b: Match) => b.timestamp?.toDate() - a.timestamp?.toDate());
-          
-          setMatches(formattedMatches);
-          
-          // Atualizar contador apenas para matches novos
-          const newMatchesCount = formattedMatches.filter((match: Match) => 
-            match.timestamp?.toDate() > new Date(Date.now() - 5000) // últimos 5 segundos
-          ).length;
-          
-          if (newMatchesCount > 0) {
-            setNewMatchCount(prev => prev + newMatchesCount);
-          }
-        } else {
-          // Criar documento de parceria se não existir
-          setDoc(partnershipRef, {
-            users: [currentUser.uid, partnerId],
-            createdAt: serverTimestamp(),
-            [`likes_${currentUser.uid}`]: [],
-            [`likes_${partnerId}`]: [],
-            matches: []
-          });
+      if (doc.exists()) {
+        const data = doc.data();
+        const matches = data.matches || [];
+        
+        setMatches(matches);
+        
+        // Atualizar contador apenas para matches novos
+        const newMatchesCount = matches.filter((match: Match) => 
+          match.timestamp?.toDate() > new Date(Date.now() - 5000)
+        ).length;
+        
+        if (newMatchesCount > 0) {
+          setNewMatchCount(prev => prev + newMatchesCount);
         }
-      } catch (error) {
-        console.error('Error processing partnership data:', error);
       }
     });
 
@@ -397,27 +389,20 @@ const Game: React.FC = () => {
 
   const handleLike = async () => {
     if (!currentUser) {
-      console.error('Usuário não está logado');
       setError('Você precisa estar logado para curtir');
       return;
     }
 
     if (!partnerId) {
-      console.error('Parceiro não encontrado');
       setError('Você precisa ter um parceiro vinculado para curtir');
       return;
     }
 
-    if (currentCardIndex >= cards.length) {
-      console.error('Índice do card inválido');
-      return;
-    }
+    if (currentCardIndex >= cards.length) return;
 
     const currentCard = cards[currentCardIndex];
-    console.log('Tentando curtir card:', currentCard.id);
     
     try {
-      // Obter o documento de parceria
       const partnershipId = [currentUser.uid, partnerId].sort().join('_');
       const partnershipRef = doc(db, 'partners', partnershipId);
       const partnershipDoc = await getDoc(partnershipRef);
@@ -429,11 +414,9 @@ const Game: React.FC = () => {
       const data = partnershipDoc.data();
       const userLikes = data[`likes_${currentUser.uid}`] || [];
       const partnerLikes = data[`likes_${partnerId}`] || [];
-      const matches = data.matches || [];
 
       // Verificar se já curtiu este card
       if (userLikes.includes(currentCard.id)) {
-        console.log('Card já foi curtido');
         setCurrentCardIndex(prev => prev + 1);
         return;
       }
@@ -443,9 +426,7 @@ const Game: React.FC = () => {
 
       // Verificar se é um match
       if (partnerLikes.includes(currentCard.id)) {
-        console.log('Match encontrado!');
-        
-        // Adicionar aos matches
+        // É um match! Adicionar aos matches
         const newMatch = {
           cardId: currentCard.id,
           timestamp: serverTimestamp(),
@@ -453,7 +434,6 @@ const Game: React.FC = () => {
           cardImage: currentCard.image
         };
 
-        // Atualizar o documento com o novo like e match
         await updateDoc(partnershipRef, {
           [`likes_${currentUser.uid}`]: updatedUserLikes,
           matches: arrayUnion(newMatch)
@@ -463,16 +443,15 @@ const Game: React.FC = () => {
         setShowMatchDialog(true);
         setNewMatchCount(prev => prev + 1);
       } else {
-        // Atualizar apenas o like
+        // Apenas adicionar o like
         await updateDoc(partnershipRef, {
           [`likes_${currentUser.uid}`]: updatedUserLikes
         });
       }
 
-      // Avançar para o próximo card
       setCurrentCardIndex(prev => prev + 1);
     } catch (error) {
-      console.error('Erro detalhado ao processar like:', error);
+      console.error('Erro ao processar like:', error);
       setError('Erro ao processar seu like. Tente novamente.');
       setTimeout(() => setError(''), 3000);
     }
