@@ -464,8 +464,7 @@ const Game: React.FC = () => {
     const unsubscribe = onSnapshot(partnershipRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data() as PartnershipData;
-        const [user1, user2] = [data.user1, data.user2];
-        const isUser1 = currentUser.uid === user1;
+        const isUser1 = data.user1 === currentUser.uid;
         
         // Carregar matches
         setMatches(data.matches || []);
@@ -483,6 +482,9 @@ const Game: React.FC = () => {
 
         // Atualizar meus fires
         setUserFires(myFires);
+
+        // Atualizar o contador de novos matches
+        setNewMatchCount(isUser1 ? data.new_matches_user1 || 0 : data.new_matches_user2 || 0);
       }
     });
 
@@ -596,11 +598,12 @@ const Game: React.FC = () => {
         };
 
         try {
-          // Primeiro atualiza os likes
+          // Primeiro atualiza os likes e incrementa as notificações para ambos
           await updateDoc(partnershipRef, {
             [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes,
             // Incrementa o contador de novos matches para ambos os usuários
-            [`new_matches_user${isUser1 ? '1' : '2'}`]: increment(1)
+            new_matches_user1: increment(1),
+            new_matches_user2: increment(1)
           });
 
           // Depois atualiza os matches separadamente
@@ -680,10 +683,26 @@ const Game: React.FC = () => {
   };
 
   // Limpar notificações ao abrir os matches
-  const handleToggleMatches = () => {
+  const handleToggleMatches = async () => {
     setShowMatches(!showMatches);
-    if (!showMatches) {
-      setNewMatchCount(0); // Zerar contador ao abrir os matches
+    if (!showMatches && currentUser && partnerId) {
+      try {
+        const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+        const partnershipRef = doc(db, 'partners', partnershipId);
+        const partnershipDoc = await getDoc(partnershipRef);
+
+        if (partnershipDoc.exists()) {
+          const data = partnershipDoc.data() as PartnershipData;
+          const isUser1 = data.user1 === currentUser.uid;
+
+          // Zerar apenas o contador do usuário atual
+          await updateDoc(partnershipRef, {
+            [isUser1 ? 'new_matches_user1' : 'new_matches_user2']: 0
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao resetar contador de matches:', error);
+      }
     }
   };
 
