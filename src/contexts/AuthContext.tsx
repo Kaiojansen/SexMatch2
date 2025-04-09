@@ -8,7 +8,8 @@ import {
   onAuthStateChanged,
   getRedirectResult,
   browserSessionPersistence,
-  setPersistence
+  setPersistence,
+  GoogleAuthProvider
 } from 'firebase/auth';
 
 interface AuthContextType {
@@ -19,15 +20,15 @@ interface AuthContextType {
   error: string | null;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType>({
+  currentUser: null,
+  loading: true,
+  signInWithGoogle: async () => {},
+  logout: async () => {},
+  error: null
+});
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -37,25 +38,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     try {
       setError(null);
-      await setPersistence(auth, browserSessionPersistence);
-      await signInWithPopup(auth, googleProvider);
-    } catch (error: any) {
-      console.error('Error signing in:', error);
-      let errorMessage = 'Ocorreu um erro ao fazer login. Tente novamente.';
+      const provider = new GoogleAuthProvider();
       
-      if (error.code === 'auth/popup-blocked') {
-        console.log('Popup blocked, trying redirect...');
-        try {
-          await signInWithRedirect(auth, googleProvider);
-          return; // Redirect will handle the rest
-        } catch (redirectError) {
-          console.error('Redirect also failed:', redirectError);
-          errorMessage = 'Não foi possível fazer login. Por favor, verifique suas configurações de privacidade.';
+      // Primeiro tenta usar popup
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        // Se o popup for bloqueado, tenta redirect
+        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
+          await signInWithRedirect(auth, provider);
+        } else {
+          throw popupError;
         }
       }
-      
-      setError(errorMessage);
-      throw error;
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      setError(error.message || 'Erro ao fazer login. Tente novamente.');
     }
   };
 
@@ -63,37 +61,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       await signOut(auth);
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setError('Erro ao fazer logout. Tente novamente.');
-      throw error;
+    } catch (error: any) {
+      console.error('Erro no logout:', error);
+      setError(error.message || 'Erro ao fazer logout. Tente novamente.');
     }
   };
 
   useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          console.log('Successfully signed in after redirect:', result.user.email);
-        }
-      } catch (error) {
-        console.error('Error handling redirect result:', error);
-        setError('Erro ao processar login. Tente novamente.');
-      }
-    };
-
-    handleRedirectResult();
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setLoading(false);
+      
       if (user) {
         console.log('User authenticated:', user.email);
+        
+        // Verificar se há resultado de redirect
+        try {
+          const result = await getRedirectResult(auth);
+          if (result) {
+            console.log('Redirect result:', result);
+          }
+        } catch (error) {
+          console.error('Error getting redirect result:', error);
+        }
       }
     });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
   const value = {

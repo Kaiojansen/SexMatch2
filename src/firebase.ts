@@ -27,20 +27,19 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Try to set persistence to local, fallback to session if blocked
+// Configurar persistência de autenticação
 const setupPersistence = async () => {
   try {
+    // Primeiro tenta usar persistência local
     await setPersistence(auth, browserLocalPersistence);
   } catch (error) {
-    console.warn('Local persistence not available, falling back to session persistence');
-    try {
-      await setPersistence(auth, browserSessionPersistence);
-    } catch (error) {
-      console.error('Failed to set persistence:', error);
-    }
+    console.warn('Local persistence not available, falling back to session persistence:', error);
+    // Se falhar, usa persistência de sessão
+    await setPersistence(auth, browserSessionPersistence);
   }
 };
 
-setupPersistence();
+// Executar configuração de persistência
+setupPersistence().catch(console.error);
 
 export { app, analytics, auth, db, storage, googleProvider }; 

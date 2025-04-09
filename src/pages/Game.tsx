@@ -145,18 +145,16 @@ const ActionButton = styled(IconButton)(({ theme }) => ({
   }
 }));
 
-const SwipeIndicator = styled(Box)<{ direction: 'left' | 'right' }>(({ direction }) => ({
+const SwipeIndicator = styled('div')(({ theme }) => ({
   position: 'absolute',
   top: '50%',
-  transform: 'translateY(-50%)',
-  ...(direction === 'left' ? { left: '20px' } : { right: '20px' }),
-  padding: '8px 16px',
-  borderRadius: '8px',
-  background: direction === 'left' ? 'rgba(255, 0, 0, 0.8)' : 'rgba(0, 255, 0, 0.8)',
-  color: 'white',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  fontSize: '2rem',
   fontWeight: 'bold',
-  opacity: 0,
-  zIndex: 10,
+  opacity: 0.8,
+  pointerEvents: 'none',
+  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
 }));
 
 const MatchesButton = styled(IconButton)(({ theme }) => ({
@@ -203,6 +201,104 @@ const MatchCard = styled(Card)(({ theme }) => ({
     borderColor: '#ff4b6e',
   },
 }));
+
+const CardContainer = styled(Box)(({ theme }) => ({
+  position: 'relative',
+  width: '100%',
+  maxWidth: '400px',
+  height: '500px',
+  borderRadius: '16px',
+  overflow: 'hidden',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+  cursor: 'grab',
+  userSelect: 'none',
+  touchAction: 'none',
+  backgroundColor: 'white',
+  '&:active': {
+    cursor: 'grabbing',
+  },
+}));
+
+const GameCard = ({ card, onSwipe, isProcessing }: { card: CardData; onSwipe: (direction: 'left' | 'right') => void; isProcessing: boolean }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [currentX, setCurrentX] = useState(0);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (isProcessing) return;
+    setIsDragging(true);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setStartX(clientX);
+    setCurrentX(clientX);
+    setSwipeDirection(null);
+  };
+
+  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDragging || isProcessing) return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setCurrentX(clientX);
+    
+    // Determinar direção do swipe
+    const deltaX = clientX - startX;
+    if (Math.abs(deltaX) > 50) { // Threshold para mostrar direção
+      setSwipeDirection(deltaX > 0 ? 'right' : 'left');
+    } else {
+      setSwipeDirection(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (!isDragging || isProcessing) return;
+    setIsDragging(false);
+    
+    const deltaX = currentX - startX;
+    const threshold = window.innerWidth * 0.25;
+    
+    if (Math.abs(deltaX) > threshold) {
+      onSwipe(deltaX > 0 ? 'right' : 'left');
+    } else {
+      // Animação de retorno suave
+      setCurrentX(startX);
+      setSwipeDirection(null);
+    }
+  };
+
+  const translateX = isDragging ? currentX - startX : 0;
+  const rotate = translateX * 0.1;
+
+  return (
+    <CardContainer
+      style={{
+        transform: `translateX(${translateX}px) rotate(${rotate}deg)`,
+        cursor: isProcessing ? 'not-allowed' : 'grab',
+        opacity: isProcessing ? 0.7 : 1,
+        transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+        backgroundColor: swipeDirection === 'right' ? 'rgba(76, 175, 80, 0.1)' : 
+                      swipeDirection === 'left' ? 'rgba(244, 67, 54, 0.1)' : 'transparent'
+      }}
+      onMouseDown={handleDragStart}
+      onMouseMove={handleDragMove}
+      onMouseUp={handleDragEnd}
+      onMouseLeave={handleDragEnd}
+      onTouchStart={handleDragStart}
+      onTouchMove={handleDragMove}
+      onTouchEnd={handleDragEnd}
+    >
+      <CardImage src={card.image} alt={card.title} />
+      <CardContent>
+        <Typography variant="h6" component="h2" gutterBottom>
+          {card.title}
+        </Typography>
+        {swipeDirection && (
+          <SwipeIndicator>
+            {swipeDirection === 'right' ? '👍 Like' : '👎 Dislike'}
+          </SwipeIndicator>
+        )}
+      </CardContent>
+    </CardContainer>
+  );
+};
 
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
@@ -319,83 +415,54 @@ const Game: React.FC = () => {
     const partnerDoc = doc(db, 'users', partnerId);
 
     try {
-      // Desabilitar interação durante o processamento
       setIsProcessing(true);
 
-      if (direction === 'right') {
-        // Verificar se já curtiu antes
-        const userData = await getDoc(userDoc);
-        if (userData.exists() && userData.data().likes?.includes(cardId)) {
+      // Verificar se já interagiu com esta carta
+      const userData = await getDoc(userDoc);
+      if (userData.exists()) {
+        const { likes = [], dislikes = [] } = userData.data();
+        if (likes.includes(cardId) || dislikes.includes(cardId)) {
           setIsProcessing(false);
           return;
         }
+      }
 
+      if (direction === 'right') {
         // Adicionar aos likes
         await updateDoc(userDoc, {
           likes: arrayUnion(cardId)
         });
 
-        // Verificar se o parceiro também curtiu
+        // Verificar match
         const partnerData = await getDoc(partnerDoc);
         if (partnerData.exists() && partnerData.data().likes?.includes(cardId)) {
-          // É um match!
           const batch = writeBatch(db);
-          
-          // Atualizar usuário atual
           batch.update(userDoc, {
             matches: arrayUnion(cardId),
             recentMatch: cardId,
             lastMatchTime: new Date().toISOString()
           });
-          
-          // Atualizar parceiro
           batch.update(partnerDoc, {
             matches: arrayUnion(cardId),
             recentMatch: cardId,
             lastMatchTime: new Date().toISOString()
           });
-          
           await batch.commit();
         }
       } else {
-        // Adicionar aos dislikes
         await updateDoc(userDoc, {
           dislikes: arrayUnion(cardId)
         });
       }
 
-      // Remover a carta atual do array
+      // Remover carta atual
       setCards(prevCards => prevCards.filter((_, index) => index !== currentCardIndex));
     } catch (error) {
       console.error('Erro ao processar swipe:', error);
-      // Mostrar feedback visual de erro
       setError('Erro ao processar sua escolha. Tente novamente.');
       setTimeout(() => setError(''), 3000);
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const handleDrag = (event: any, info: any) => {
-    if (info.offset.x > 50) {
-      setSwipeDirection('right');
-    } else if (info.offset.x < -50) {
-      setSwipeDirection('left');
-    } else {
-      setSwipeDirection(null);
-    }
-  };
-
-  const handleDragEnd = (event: any, info: any) => {
-    const offset = info.offset.x;
-    const velocity = info.velocity.x;
-
-    if (Math.abs(velocity) >= 800 || Math.abs(offset) >= 100) {
-      if (offset > 0) {
-        handleSwipe('right');
-      } else {
-        handleSwipe('left');
-      }
     }
   };
 
@@ -458,50 +525,12 @@ const Game: React.FC = () => {
         <CardWrapper>
           <AnimatePresence mode="wait">
             {currentCardIndex < cards.length ? (
-              <StyledCard
+              <GameCard
                 key={cards[currentCardIndex].id}
-                drag="x"
-                dragConstraints={dragConstraints}
-                onDrag={handleDrag}
-                onDragEnd={handleDragEnd}
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -200 }}
-                whileDrag={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <CardImage 
-                  src={cards[currentCardIndex].image} 
-                  alt={cards[currentCardIndex].title} 
-                />
-                <CardOverlay>
-                  <Typography variant="h5" gutterBottom sx={{ 
-                    fontWeight: 600, 
-                    color: '#ff4b6e',
-                    fontSize: { xs: '1.5rem', sm: '1.8rem' }
-                  }}>
-                    {cards[currentCardIndex].title}
-                  </Typography>
-                  <Typography variant="body1" sx={{ 
-                    color: 'rgba(255,255,255,0.8)',
-                    fontSize: { xs: '0.9rem', sm: '1rem' }
-                  }}>
-                    {cards[currentCardIndex].description}
-                  </Typography>
-                </CardOverlay>
-                <SwipeIndicator 
-                  direction="left" 
-                  sx={{ opacity: swipeDirection === 'left' ? 1 : 0 }}
-                >
-                  NOPE
-                </SwipeIndicator>
-                <SwipeIndicator 
-                  direction="right" 
-                  sx={{ opacity: swipeDirection === 'right' ? 1 : 0 }}
-                >
-                  LIKE
-                </SwipeIndicator>
-              </StyledCard>
+                card={cards[currentCardIndex]}
+                onSwipe={handleSwipe}
+                isProcessing={isProcessing}
+              />
             ) : (
               <Box 
                 sx={{ 
