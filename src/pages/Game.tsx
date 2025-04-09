@@ -15,7 +15,8 @@ import {
   arrayUnion,
   arrayRemove,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
 import {
   Box,
@@ -51,16 +52,16 @@ interface CardData {
 
 interface Match {
   cardId: string;
-  timestamp: any;
+  timestamp: string;
   cardTitle: string;
   cardImage: string;
 }
 
 interface PartnershipData {
   users: string[];
-  createdAt: any;
-  likes_user1: string[]; // IDs dos cards curtidos pelo usuário 1
-  likes_user2: string[]; // IDs dos cards curtidos pelo usuário 2
+  createdAt: Timestamp;
+  likes_user1: string[];
+  likes_user2: string[];
   matches: Match[];
 }
 
@@ -236,6 +237,14 @@ const MatchCard = styled(Card)(({ theme }) => ({
   },
 }));
 
+// Função auxiliar para converter timestamp
+const parseTimestamp = (timestamp: string | Timestamp): Date => {
+  if (typeof timestamp === 'string') {
+    return new Date(timestamp);
+  }
+  return timestamp.toDate();
+};
+
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -348,7 +357,7 @@ const Game: React.FC = () => {
         
         // Atualizar contador apenas para matches novos
         const newMatchesCount = matches.filter((match: Match) => 
-          match.timestamp?.toDate() > new Date(Date.now() - 5000)
+          parseTimestamp(match.timestamp).getTime() > new Date(Date.now() - 5000).getTime()
         ).length;
         
         if (newMatchesCount > 0) {
@@ -515,31 +524,34 @@ const Game: React.FC = () => {
               Nenhum match ainda. Continue jogando!
             </Typography>
           ) : (
-            matches.map(match => (
-              <MatchCard key={match.cardId}>
-                <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
-                  <img
-                    src={match.cardImage}
-                    alt={match.cardTitle}
-                    style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 8,
-                      marginRight: 10,
-                      objectFit: 'cover',
-                    }}
-                  />
-                  <Box>
-                    <Typography variant="subtitle1" gutterBottom>
-                      {match.cardTitle}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {match.timestamp?.toDate().toLocaleString()}
-                    </Typography>
+            matches.map((match) => {
+              const matchDate = parseTimestamp(match.timestamp);
+              return (
+                <MatchCard key={match.cardId}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+                    <img
+                      src={match.cardImage}
+                      alt={match.cardTitle}
+                      style={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: 8,
+                        marginRight: 10,
+                        objectFit: 'cover',
+                      }}
+                    />
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>
+                        {match.cardTitle}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {matchDate.toLocaleDateString()}
+                      </Typography>
+                    </Box>
                   </Box>
-                </Box>
-              </MatchCard>
-            ))
+                </MatchCard>
+              );
+            })
           )}
         </MatchesPanel>
       </Collapse>
