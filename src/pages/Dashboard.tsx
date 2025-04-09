@@ -26,12 +26,15 @@ import {
   Card,
   CardContent,
   CardActions,
-  Chip
+  Chip,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { motion } from 'framer-motion';
@@ -108,6 +111,9 @@ const Dashboard: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [userName, setUserName] = useState('');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [editNameDialog, setEditNameDialog] = useState(false);
+  const [tempName, setTempName] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -229,6 +235,31 @@ const Dashboard: React.FC = () => {
     setShowNameDialog(false);
   };
 
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleEditName = () => {
+    setTempName(userName);
+    setEditNameDialog(true);
+    handleMenuClose();
+  };
+
+  const handleSaveName = async () => {
+    if (!currentUser || !tempName.trim()) return;
+    
+    const userDoc = doc(db, 'users', currentUser.uid);
+    await updateDoc(userDoc, {
+      name: tempName.trim()
+    });
+    setUserName(tempName.trim());
+    setEditNameDialog(false);
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <motion.div
@@ -258,7 +289,7 @@ const Dashboard: React.FC = () => {
             }
           }}
         >
-          <Box sx={{ mb: 4 }}>
+          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography 
               variant="h4" 
               component="h1" 
@@ -269,12 +300,24 @@ const Dashboard: React.FC = () => {
                 textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 2
+                gap: 2,
+                mb: 0
               }}
             >
               <FavoriteIcon sx={{ color: '#ff4b6e' }} />
               Dashboard
             </Typography>
+            <IconButton
+              onClick={handleMenuClick}
+              sx={{
+                color: '#ff4b6e',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 75, 110, 0.2)'
+                }
+              }}
+            >
+              <MoreVertIcon />
+            </IconButton>
           </Box>
 
           {/* Seção do Código do Usuário */}
@@ -525,6 +568,90 @@ const Dashboard: React.FC = () => {
             </Button>
           </Box>
         </DialogContent>
+      </Dialog>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            background: 'rgba(20, 20, 20, 0.95)',
+            border: '1px solid rgba(255, 75, 110, 0.2)',
+            backdropFilter: 'blur(10px)',
+            '& .MuiMenuItem-root': {
+              color: '#fff',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 75, 110, 0.2)'
+              }
+            }
+          }
+        }}
+      >
+        <MenuItem onClick={handleEditName}>
+          Editar Nome
+        </MenuItem>
+      </Menu>
+
+      <Dialog 
+        open={editNameDialog} 
+        onClose={() => setEditNameDialog(false)}
+        PaperProps={{
+          sx: {
+            background: 'rgba(20, 20, 20, 0.95)',
+            border: '1px solid rgba(255, 75, 110, 0.2)',
+            backdropFilter: 'blur(10px)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#fff' }}>Editar Nome</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Seu Nome"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={tempName}
+            onChange={(e) => setTempName(e.target.value)}
+            sx={{
+              mt: 2,
+              '& .MuiOutlinedInput-root': {
+                color: '#fff',
+                '& fieldset': {
+                  borderColor: 'rgba(255, 75, 110, 0.5)',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#ff4b6e',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setEditNameDialog(false)}
+            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveName}
+            disabled={!tempName.trim()}
+            sx={{
+              color: '#ff4b6e',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 75, 110, 0.1)'
+              }
+            }}
+          >
+            Salvar
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );
