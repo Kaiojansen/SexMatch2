@@ -16,7 +16,8 @@ import {
   arrayRemove,
   writeBatch,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  increment
 } from 'firebase/firestore';
 import {
   Box,
@@ -58,13 +59,17 @@ interface Match {
 }
 
 interface PartnershipData {
-  users: string[];
+  id: string;
+  user1: string;
+  user2: string;
   createdAt: Timestamp;
   likes_user1: string[];
   likes_user2: string[];
   fire_user1: string[];
   fire_user2: string[];
   matches: Match[];
+  new_matches_user1: number;
+  new_matches_user2: number;
 }
 
 const StyledContainer = styled(Container)({
@@ -394,13 +399,16 @@ const Game: React.FC = () => {
               // Criar documento inicial de parceria
               const [user1, user2] = [currentUser.uid, partnerId].sort();
               await setDoc(partnershipRef, {
-                users: [user1, user2],
+                user1: user1,
+                user2: user2,
                 createdAt: serverTimestamp(),
                 likes_user1: [], // Likes do primeiro usuário (em ordem alfabética)
                 likes_user2: [], // Likes do segundo usuário (em ordem alfabética)
                 fire_user1: [],
                 fire_user2: [],
-                matches: []
+                matches: [],
+                new_matches_user1: 0,
+                new_matches_user2: 0
               });
             }
           } else {
@@ -456,7 +464,7 @@ const Game: React.FC = () => {
     const unsubscribe = onSnapshot(partnershipRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data() as PartnershipData;
-        const [user1, user2] = data.users;
+        const [user1, user2] = [data.user1, data.user2];
         const isUser1 = currentUser.uid === user1;
         
         // Carregar matches
@@ -549,24 +557,13 @@ const Game: React.FC = () => {
       const partnershipDoc = await getDoc(partnershipRef);
 
       if (!partnershipDoc.exists()) {
-        console.log('Criando novo documento de parceria');
-        // Criar documento inicial de parceria
-        const [user1, user2] = [currentUser.uid, partnerId].sort();
-        await setDoc(partnershipRef, {
-          users: [user1, user2],
-          createdAt: serverTimestamp(),
-          likes_user1: [], // Likes do primeiro usuário (em ordem alfabética)
-          likes_user2: [], // Likes do segundo usuário (em ordem alfabética)
-          fire_user1: [],
-          fire_user2: [],
-          matches: []
-        });
+        console.log('Documento de parceria não encontrado');
+        setError('Erro: Documento de parceria não encontrado');
         return;
       }
 
       const data = partnershipDoc.data() as PartnershipData;
-      const [user1, user2] = data.users;
-      const isUser1 = currentUser.uid === user1;
+      const isUser1 = data.user1 === currentUser.uid;
       
       // Pegar os likes do usuário atual e do parceiro
       const userLikes = isUser1 ? data.likes_user1 : data.likes_user2;
@@ -601,7 +598,9 @@ const Game: React.FC = () => {
         try {
           // Primeiro atualiza os likes
           await updateDoc(partnershipRef, {
-            [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes
+            [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes,
+            // Incrementa o contador de novos matches para ambos os usuários
+            [`new_matches_user${isUser1 ? '1' : '2'}`]: increment(1)
           });
 
           // Depois atualiza os matches separadamente
@@ -618,11 +617,16 @@ const Game: React.FC = () => {
           setTimeout(() => setError(''), 3000);
         }
       } else {
-        console.log('Adicionando novo like');
-        // Apenas adicionar o like
-        await updateDoc(partnershipRef, {
-          [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes
-        });
+        // Se não for match, apenas atualiza os likes
+        try {
+          await updateDoc(partnershipRef, {
+            [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes
+          });
+        } catch (error) {
+          console.error('Erro ao atualizar likes:', error);
+          setError('Erro ao salvar o like. Tente novamente.');
+          setTimeout(() => setError(''), 3000);
+        }
       }
 
       setCurrentCardIndex(prev => prev + 1);
@@ -652,8 +656,7 @@ const Game: React.FC = () => {
       }
 
       const data = partnershipDoc.data() as PartnershipData;
-      const [user1, user2] = data.users;
-      const isUser1 = currentUser.uid === user1;
+      const isUser1 = data.user1 === currentUser.uid;
 
       // Verificar se já marcou esta carta
       const userFires = isUser1 ? data.fire_user1 || [] : data.fire_user2 || [];
