@@ -446,20 +446,30 @@ const Game: React.FC = () => {
         // É um match! Adicionar aos matches
         const newMatch = {
           cardId: currentCard.id,
-          timestamp: serverTimestamp(),
+          timestamp: new Date().toISOString(),
           cardTitle: currentCard.title,
           cardImage: currentCard.image
         };
 
-        // Atualizar o documento com o novo like e match
-        await updateDoc(partnershipRef, {
-          [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes,
-          matches: arrayUnion(newMatch)
-        });
+        try {
+          // Primeiro atualiza os likes
+          await updateDoc(partnershipRef, {
+            [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes
+          });
 
-        setMatchedCard(currentCard);
-        setShowMatchDialog(true);
-        setNewMatchCount(prev => prev + 1);
+          // Depois atualiza os matches separadamente
+          await updateDoc(partnershipRef, {
+            matches: arrayUnion(newMatch)
+          });
+
+          setMatchedCard(currentCard);
+          setShowMatchDialog(true);
+          setNewMatchCount(prev => prev + 1);
+        } catch (error) {
+          console.error('Erro ao processar match:', error);
+          setError('Erro ao processar o match. Tente novamente.');
+          setTimeout(() => setError(''), 3000);
+        }
       } else {
         console.log('Adicionando novo like');
         // Apenas adicionar o like
