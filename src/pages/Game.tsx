@@ -55,9 +55,6 @@ interface Match {
   cardId: string;
   cardTitle: string;
   cardImage: string;
-  hotStatus?: {
-    [userId: string]: boolean;
-  };
 }
 
 interface PartnershipData {
@@ -65,6 +62,8 @@ interface PartnershipData {
   createdAt: Timestamp;
   likes_user1: string[];
   likes_user2: string[];
+  fire_user1: string[];
+  fire_user2: string[];
   matches: Match[];
 }
 
@@ -434,6 +433,8 @@ const Game: React.FC = () => {
                 createdAt: serverTimestamp(),
                 likes_user1: [], // Likes do primeiro usuário (em ordem alfabética)
                 likes_user2: [], // Likes do segundo usuário (em ordem alfabética)
+                fire_user1: [],
+                fire_user2: [],
                 matches: []
               });
             }
@@ -484,20 +485,26 @@ const Game: React.FC = () => {
   useEffect(() => {
     if (!currentUser || !partnerId) return;
 
-    // Escutar por atualizações no documento de parceria
     const partnershipId = [currentUser.uid, partnerId].sort().join('_');
     const partnershipRef = doc(db, 'partners', partnershipId);
 
     const unsubscribe = onSnapshot(partnershipRef, (doc) => {
       if (doc.exists()) {
-        const data = doc.data();
-        const matches = data.matches || [];
+        const data = doc.data() as PartnershipData;
+        const [user1, user2] = data.users;
+        const isUser1 = currentUser.uid === user1;
         
-        setMatches(matches);
+        // Carregar matches
+        setMatches(data.matches || []);
         
-        // Atualizar contador apenas para matches novos
-        const newMatchesCount = matches.length > 0 ? 1 : 0;
-        setNewMatchCount(newMatchesCount);
+        // Carregar cartas marcadas como "quero muito" pelo parceiro
+        const partnerFires = isUser1 ? data.fire_user2 || [] : data.fire_user1 || [];
+        setHotMarkedCards(
+          partnerFires.reduce((acc, cardId) => ({
+            ...acc,
+            [cardId]: true
+          }), {})
+        );
       }
     });
 
@@ -555,6 +562,8 @@ const Game: React.FC = () => {
           createdAt: serverTimestamp(),
           likes_user1: [], // Likes do primeiro usuário (em ordem alfabética)
           likes_user2: [], // Likes do segundo usuário (em ordem alfabética)
+          fire_user1: [],
+          fire_user2: [],
           matches: []
         });
         return;
@@ -647,41 +656,34 @@ const Game: React.FC = () => {
         return;
       }
 
-      const data = partnershipDoc.data();
-      const matches = data.matches || [];
+      const data = partnershipDoc.data() as PartnershipData;
+      const [user1, user2] = data.users;
+      const isUser1 = currentUser.uid === user1;
       
-      // Encontra o índice do match atual
-      const matchIndex = matches.findIndex((m: Match) => m.cardId === match.cardId);
-      
-      if (matchIndex === -1) {
-        console.error('Match não encontrado');
+      // Pegar os "quero muito" do usuário atual
+      const userFires = isUser1 ? data.fire_user1 || [] : data.fire_user2 || [];
+
+      // Verificar se já marcou esta carta
+      if (userFires.includes(match.cardId)) {
+        console.log('Carta já foi marcada como quero muito');
         return;
       }
 
-      // Cria uma cópia do array de matches
-      const updatedMatches = [...matches];
-      
-      // Atualiza o hotStatus do match específico
-      updatedMatches[matchIndex] = {
-        ...updatedMatches[matchIndex],
-        hotStatus: {
-          ...(updatedMatches[matchIndex].hotStatus || {}),
-          [currentUser.uid]: true
-        }
-      };
+      // Adicionar o fire
+      const updatedFires = [...userFires, match.cardId];
 
-      // Atualiza o documento com o novo array de matches
+      // Atualizar o documento
       await updateDoc(partnershipRef, {
-        matches: updatedMatches
+        [isUser1 ? 'fire_user1' : 'fire_user2']: updatedFires
       });
 
-      // Atualiza o estado local
+      // Atualizar estado local
       setHotMarkedCards(prev => ({
         ...prev,
         [match.cardId]: true
       }));
 
-      // Notifica o parceiro
+      // Notificar o parceiro
       const notificationRef = doc(db, 'notifications', partnerId);
       await setDoc(notificationRef, {
         type: 'hot_mark',
@@ -754,7 +756,6 @@ const Game: React.FC = () => {
                     borderRadius: '8px',
                     overflow: 'hidden',
                     backgroundColor: '#000',
-                    touchAction: 'pan-y',
                     position: 'relative',
                     '&:hover': {
                       transform: 'scale(1.05)',
@@ -762,7 +763,7 @@ const Game: React.FC = () => {
                     }
                   }}
                 >
-                  {match.hotStatus && match.hotStatus[partnerId || ''] && (
+                  {hotMarkedCards[match.cardId] && (
                     <HotCardIndicator>
                       <Box sx={{ 
                         display: 'flex', 
