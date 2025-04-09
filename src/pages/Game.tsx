@@ -403,19 +403,36 @@ const Game: React.FC = () => {
       const partnershipDoc = await getDoc(partnershipRef);
 
       if (!partnershipDoc.exists()) {
-        throw new Error('Documento de parceria não encontrado');
+        console.log('Criando novo documento de parceria');
+        // Criar documento inicial de parceria
+        const [user1, user2] = [currentUser.uid, partnerId].sort();
+        await setDoc(partnershipRef, {
+          users: [user1, user2],
+          createdAt: serverTimestamp(),
+          likes_user1: [], // Likes do primeiro usuário (em ordem alfabética)
+          likes_user2: [], // Likes do segundo usuário (em ordem alfabética)
+          matches: []
+        });
+        return;
       }
 
-      const data = partnershipDoc.data();
-      const [user1, user2] = [currentUser.uid, partnerId].sort();
+      const data = partnershipDoc.data() as PartnershipData;
+      const [user1, user2] = data.users;
       const isUser1 = currentUser.uid === user1;
       
       // Pegar os likes do usuário atual e do parceiro
-      const userLikes = isUser1 ? data.likes_user1 || [] : data.likes_user2 || [];
-      const partnerLikes = isUser1 ? data.likes_user2 || [] : data.likes_user1 || [];
+      const userLikes = isUser1 ? data.likes_user1 : data.likes_user2;
+      const partnerLikes = isUser1 ? data.likes_user2 : data.likes_user1;
+
+      if (!userLikes || !partnerLikes) {
+        console.error('Estrutura de likes inválida');
+        setError('Erro na estrutura de dados. Por favor, tente novamente.');
+        return;
+      }
 
       // Verificar se já curtiu este card
       if (userLikes.includes(currentCard.id)) {
+        console.log('Card já foi curtido anteriormente');
         setCurrentCardIndex(prev => prev + 1);
         return;
       }
@@ -425,6 +442,7 @@ const Game: React.FC = () => {
 
       // Verificar se é um match
       if (partnerLikes.includes(currentCard.id)) {
+        console.log('Match encontrado!');
         // É um match! Adicionar aos matches
         const newMatch = {
           cardId: currentCard.id,
@@ -443,6 +461,7 @@ const Game: React.FC = () => {
         setShowMatchDialog(true);
         setNewMatchCount(prev => prev + 1);
       } else {
+        console.log('Adicionando novo like');
         // Apenas adicionar o like
         await updateDoc(partnershipRef, {
           [isUser1 ? 'likes_user1' : 'likes_user2']: updatedLikes
