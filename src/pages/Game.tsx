@@ -640,12 +640,42 @@ const Game: React.FC = () => {
     try {
       const partnershipId = [currentUser.uid, partnerId].sort().join('_');
       const partnershipRef = doc(db, 'partners', partnershipId);
+      const partnershipDoc = await getDoc(partnershipRef);
+
+      if (!partnershipDoc.exists()) {
+        console.error('Documento de parceria não encontrado');
+        return;
+      }
+
+      const data = partnershipDoc.data();
+      const matches = data.matches || [];
       
-      // Atualiza o status de "quero muito" para esta carta
+      // Encontra o índice do match atual
+      const matchIndex = matches.findIndex((m: Match) => m.cardId === match.cardId);
+      
+      if (matchIndex === -1) {
+        console.error('Match não encontrado');
+        return;
+      }
+
+      // Cria uma cópia do array de matches
+      const updatedMatches = [...matches];
+      
+      // Atualiza o hotStatus do match específico
+      updatedMatches[matchIndex] = {
+        ...updatedMatches[matchIndex],
+        hotStatus: {
+          ...(updatedMatches[matchIndex].hotStatus || {}),
+          [currentUser.uid]: true
+        }
+      };
+
+      // Atualiza o documento com o novo array de matches
       await updateDoc(partnershipRef, {
-        [`matches.${match.cardId}.hotStatus.${currentUser.uid}`]: true
+        matches: updatedMatches
       });
 
+      // Atualiza o estado local
       setHotMarkedCards(prev => ({
         ...prev,
         [match.cardId]: true
