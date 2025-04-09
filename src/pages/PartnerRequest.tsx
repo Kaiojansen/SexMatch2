@@ -32,7 +32,7 @@ const PartnerRequest: React.FC = () => {
             const partnerDoc = doc(db, 'users', data.pendingPartner);
             const partnerSnap = await getDoc(partnerDoc);
             if (partnerSnap.exists()) {
-              setPartnerName(partnerSnap.data().displayName || 'Unknown User');
+              setPartnerName(partnerSnap.data().name || 'Unknown User');
             }
           }
         }

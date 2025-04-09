@@ -106,6 +106,8 @@ const Dashboard: React.FC = () => {
   const [partners, setPartners] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -117,6 +119,9 @@ const Dashboard: React.FC = () => {
           const data = docSnap.data();
           setUserCode(data.code);
           setPartners(data.partners || []);
+          if (!data.name) {
+            setShowNameDialog(true);
+          }
         } else {
           // Gerar código único se não existir
           const newCode = generateUniqueCode();
@@ -126,6 +131,7 @@ const Dashboard: React.FC = () => {
             createdAt: new Date()
           });
           setUserCode(newCode);
+          setShowNameDialog(true);
         }
       }
     };
@@ -211,6 +217,16 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const handleSetName = async () => {
+    if (!currentUser || !userName.trim()) return;
+    
+    const userDoc = doc(db, 'users', currentUser.uid);
+    await updateDoc(userDoc, {
+      name: userName.trim()
+    });
+    setShowNameDialog(false);
   };
 
   return (
@@ -487,6 +503,29 @@ const Dashboard: React.FC = () => {
           {success}
         </Alert>
       </Snackbar>
+
+      <Dialog open={showNameDialog} onClose={() => {}}>
+        <DialogTitle>Choose Your Name</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Your Name"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleSetName}
+              disabled={!userName.trim()}
+            >
+              Save Name
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 };
