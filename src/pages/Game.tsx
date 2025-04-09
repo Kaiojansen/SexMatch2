@@ -17,6 +17,7 @@ import {
   Button,
   Badge,
   Collapse,
+  Alert,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -218,6 +219,7 @@ const Game: React.FC = () => {
   const [showMatches, setShowMatches] = useState(false);
   const [matches, setMatches] = useState<CardData[]>([]);
   const [newMatch, setNewMatch] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (!currentUser || !partnerId) {
@@ -317,11 +319,15 @@ const Game: React.FC = () => {
     const partnerDoc = doc(db, 'users', partnerId);
 
     try {
+      // Desabilitar interação durante o processamento
+      setIsProcessing(true);
+
       if (direction === 'right') {
         // Verificar se já curtiu antes
         const userData = await getDoc(userDoc);
         if (userData.exists() && userData.data().likes?.includes(cardId)) {
-          return; // Já curtiu esta carta
+          setIsProcessing(false);
+          return;
         }
 
         // Adicionar aos likes
@@ -362,7 +368,11 @@ const Game: React.FC = () => {
       setCards(prevCards => prevCards.filter((_, index) => index !== currentCardIndex));
     } catch (error) {
       console.error('Erro ao processar swipe:', error);
-      // Aqui você pode adicionar um feedback visual de erro se desejar
+      // Mostrar feedback visual de erro
+      setError('Erro ao processar sua escolha. Tente novamente.');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -617,6 +627,12 @@ const Game: React.FC = () => {
           </DialogContent>
         </Dialog>
       </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
+          {error}
+        </Alert>
+      )}
     </StyledContainer>
   );
 };
