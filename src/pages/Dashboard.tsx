@@ -110,6 +110,7 @@ const Dashboard: React.FC = () => {
   const [partnerCode, setPartnerCode] = useState('');
   const [userCode, setUserCode] = useState('');
   const [partners, setPartners] = useState<string[]>([]);
+  const [partnerNames, setPartnerNames] = useState<{[key: string]: string}>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showNameDialog, setShowNameDialog] = useState(false);
@@ -127,10 +128,24 @@ const Dashboard: React.FC = () => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setUserCode(data.code);
+          setUserName(data.name || '');
           setPartners(data.partners || []);
           if (!data.name) {
             setShowNameDialog(true);
           }
+          
+          // Buscar nomes dos parceiros
+          const partnerIds = data.partners || [];
+          const names: {[key: string]: string} = {};
+          
+          for (const partnerId of partnerIds) {
+            const partnerDoc = await getDoc(doc(db, 'users', partnerId));
+            if (partnerDoc.exists()) {
+              names[partnerId] = partnerDoc.data().name || 'Sem nome';
+            }
+          }
+          
+          setPartnerNames(names);
         } else {
           // Gerar código único se não existir
           const newCode = generateUniqueCode();
@@ -171,6 +186,7 @@ const Dashboard: React.FC = () => {
 
       const partnerDoc = querySnapshot.docs[0];
       const partnerId = partnerDoc.id;
+      const partnerData = partnerDoc.data();
 
       // Verificar se não é o próprio usuário
       if (partnerId === currentUser?.uid) {
@@ -196,7 +212,13 @@ const Dashboard: React.FC = () => {
         partners: arrayUnion(currentUser?.uid || '')
       });
 
+      // Atualizar a lista de parceiros e seus nomes
       setPartners([...partners, partnerId]);
+      setPartnerNames(prev => ({
+        ...prev,
+        [partnerId]: partnerData.name || 'Sem nome'
+      }));
+      
       setPartnerCode('');
       setOpen(false);
       setSuccess('Parceiro adicionado com sucesso!');
@@ -406,10 +428,10 @@ const Dashboard: React.FC = () => {
                   <PartnerItem key={partnerId}>
                     <PartnerInfo>
                       <Avatar sx={{ bgcolor: '#ff4b6e' }}>
-                        {partnerId.charAt(0).toUpperCase()}
+                        {(partnerNames[partnerId] || 'S').charAt(0).toUpperCase()}
                       </Avatar>
-                      <Typography variant="body1">
-                        Parceiro {partnerId.substring(0, 6)}
+                      <Typography variant="body1" sx={{ color: '#fff' }}>
+                        {partnerNames[partnerId] || 'Sem nome'}
                       </Typography>
                     </PartnerInfo>
                     
