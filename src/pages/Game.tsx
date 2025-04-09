@@ -55,8 +55,6 @@ interface Match {
   cardId: string;
   cardTitle: string;
   cardImage: string;
-  user1: string;
-  user2: string;
 }
 
 interface PartnershipData {
@@ -594,9 +592,7 @@ const Game: React.FC = () => {
         const newMatch = {
           cardId: currentCard.id,
           cardTitle: currentCard.title,
-          cardImage: currentCard.image,
-          user1: currentUser.uid,
-          user2: partnerId
+          cardImage: currentCard.image
         };
 
         try {
