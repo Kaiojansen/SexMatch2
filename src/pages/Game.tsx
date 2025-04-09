@@ -55,6 +55,9 @@ interface Match {
   cardId: string;
   cardTitle: string;
   cardImage: string;
+  hotStatus?: {
+    [userId: string]: boolean;
+  };
 }
 
 interface PartnershipData {
@@ -298,6 +301,28 @@ const CloseButton = styled(IconButton)({
   }
 });
 
+const HotCardIndicator = styled('div')({
+  position: 'absolute',
+  top: '8px',
+  right: '8px',
+  zIndex: 2,
+  animation: 'pulse 2s infinite',
+  '@keyframes pulse': {
+    '0%': { 
+      transform: 'scale(1)',
+      opacity: 0.8 
+    },
+    '50%': { 
+      transform: 'scale(1.2)',
+      opacity: 1 
+    },
+    '100%': { 
+      transform: 'scale(1)',
+      opacity: 0.8 
+    }
+  }
+});
+
 // Função auxiliar para converter timestamp
 const parseTimestamp = (timestamp: string | Timestamp): Date => {
   if (typeof timestamp === 'string') {
@@ -305,6 +330,57 @@ const parseTimestamp = (timestamp: string | Timestamp): Date => {
   }
   return timestamp.toDate();
 };
+
+// Componente de animação de fogos
+const FireworksEmoji = styled('div')({
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  pointerEvents: 'none',
+  zIndex: 10000,
+  animation: 'fadeOut 2s forwards',
+  '& .emoji': {
+    position: 'absolute',
+    fontSize: '2rem',
+    animation: 'floatUp 2s ease-out forwards',
+  },
+  '@keyframes fadeOut': {
+    '0%': { opacity: 1 },
+    '80%': { opacity: 1 },
+    '100%': { opacity: 0 }
+  },
+  '@keyframes floatUp': {
+    '0%': { 
+      transform: 'translateY(0) scale(1)',
+      opacity: 1 
+    },
+    '100%': { 
+      transform: 'translateY(-100vh) scale(0)',
+      opacity: 0 
+    }
+  }
+});
+
+const HotButton = styled(Button)(({ theme }) => ({
+  backgroundColor: '#ff4b6e',
+  color: 'white',
+  borderRadius: '20px',
+  padding: '8px 24px',
+  marginTop: '16px',
+  width: '100%',
+  '&:hover': {
+    backgroundColor: '#ff1f4b',
+  },
+  '&.marked': {
+    backgroundColor: '#ff1f4b',
+    pointerEvents: 'none',
+  }
+}));
 
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
@@ -323,6 +399,8 @@ const Game: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [showFireworks, setShowFireworks] = useState(false);
+  const [hotMarkedCards, setHotMarkedCards] = useState<{ [cardId: string]: boolean }>({});
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -555,6 +633,55 @@ const Game: React.FC = () => {
     setCurrentCardIndex(prev => prev + 1);
   };
 
+  // Função para marcar uma carta como "quero muito"
+  const handleMarkAsHot = async (match: Match) => {
+    if (!currentUser || !partnerId) return;
+
+    try {
+      const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+      const partnershipRef = doc(db, 'partners', partnershipId);
+      
+      // Atualiza o status de "quero muito" para esta carta
+      await updateDoc(partnershipRef, {
+        [`matches.${match.cardId}.hotStatus.${currentUser.uid}`]: true
+      });
+
+      setHotMarkedCards(prev => ({
+        ...prev,
+        [match.cardId]: true
+      }));
+
+      // Notifica o parceiro
+      const notificationRef = doc(db, 'notifications', partnerId);
+      await setDoc(notificationRef, {
+        type: 'hot_mark',
+        cardId: match.cardId,
+        cardTitle: match.cardTitle,
+        from: currentUser.uid,
+        timestamp: serverTimestamp()
+      }, { merge: true });
+
+    } catch (error) {
+      console.error('Erro ao marcar carta como quente:', error);
+      setError('Erro ao marcar carta. Tente novamente.');
+    }
+  };
+
+  // Efeito para mostrar fogos quando receber notificação
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'notifications', currentUser.uid), (doc) => {
+      const data = doc.data();
+      if (data?.type === 'hot_mark') {
+        setShowFireworks(true);
+        setTimeout(() => setShowFireworks(false), 2000);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
   return (
     <StyledContainer maxWidth={false}>
       <MatchesButton onClick={() => setShowMatches(!showMatches)}>
@@ -597,13 +724,37 @@ const Game: React.FC = () => {
                     borderRadius: '8px',
                     overflow: 'hidden',
                     backgroundColor: '#000',
-                    touchAction: 'pan-y', // Permite scroll touch
+                    touchAction: 'pan-y',
+                    position: 'relative',
                     '&:hover': {
                       transform: 'scale(1.05)',
                       border: '2px solid #666'
                     }
                   }}
                 >
+                  {match.hotStatus && match.hotStatus[partnerId || ''] && (
+                    <HotCardIndicator>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        gap: '4px',
+                        alignItems: 'center',
+                        background: 'linear-gradient(45deg, #ff4b6e, #ff1f4b)',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)'
+                      }}>
+                        <LocalFireDepartmentIcon sx={{ fontSize: '1rem' }} />
+                        <Typography variant="caption" sx={{ 
+                          color: '#fff',
+                          fontWeight: 'bold',
+                          fontSize: '0.7rem',
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                        }}>
+                          HOT!
+                        </Typography>
+                      </Box>
+                    </HotCardIndicator>
+                  )}
                   <Box sx={{ position: 'relative', paddingTop: '100%' }}>
                     <img
                       src={match.cardImage}
@@ -616,7 +767,7 @@ const Game: React.FC = () => {
                         height: '100%',
                         objectFit: 'cover',
                         userSelect: 'none',
-                        pointerEvents: 'none' // Alternativa para prevenir drag
+                        pointerEvents: 'none'
                       }}
                       draggable={false}
                     />
@@ -638,7 +789,7 @@ const Game: React.FC = () => {
                           fontSize: '0.8rem',
                           fontWeight: 'bold',
                           textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                          userSelect: 'none', // Previne seleção do texto
+                          userSelect: 'none',
                         }}
                       >
                         {match.cardTitle}
@@ -833,8 +984,34 @@ const Game: React.FC = () => {
               textAlign: 'center',
               backgroundColor: '#000',
               borderRadius: '10px',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              position: 'relative'
             }}>
+              {selectedMatch.hotStatus && selectedMatch.hotStatus[partnerId || ''] && (
+                <Box sx={{ 
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  zIndex: 2,
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center',
+                  background: 'linear-gradient(45deg, #ff4b6e, #ff1f4b)',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)',
+                  animation: 'pulse 2s infinite',
+                }}>
+                  <LocalFireDepartmentIcon />
+                  <Typography sx={{ 
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                  }}>
+                    SEU PARCEIRO QUER MUITO!
+                  </Typography>
+                </Box>
+              )}
               <img
                 src={selectedMatch.cardImage}
                 alt={selectedMatch.cardTitle}
@@ -851,9 +1028,36 @@ const Game: React.FC = () => {
               }}>
                 {selectedMatch.cardTitle}
               </Typography>
+              
+              <HotButton
+                onClick={() => handleMarkAsHot(selectedMatch)}
+                startIcon={<LocalFireDepartmentIcon />}
+                className={hotMarkedCards[selectedMatch.cardId] ? 'marked' : ''}
+                disabled={hotMarkedCards[selectedMatch.cardId]}
+              >
+                {hotMarkedCards[selectedMatch.cardId] ? 'MUITO QUENTE! 🔥' : 'QUERO MUITO! 🔥'}
+              </HotButton>
             </Box>
           </ModalContent>
         </ModalOverlay>
+      )}
+
+      {/* Animação de fogos */}
+      {showFireworks && (
+        <FireworksEmoji>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div
+              key={i}
+              className="emoji"
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 0.5}s`,
+              }}
+            >
+              {['🔥', '💥', '⭐', '✨'][Math.floor(Math.random() * 4)]}
+            </div>
+          ))}
+        </FireworksEmoji>
       )}
 
       {error && (
