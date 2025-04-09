@@ -35,6 +35,67 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { motion } from 'framer-motion';
+import { styled } from '@mui/material/styles';
+
+const PartnerItem = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  padding: '8px 12px',
+  borderRadius: '12px',
+  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  marginBottom: '8px',
+  position: 'relative',
+  [theme.breakpoints.down('sm')]: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '8px',
+    paddingBottom: '12px'
+  }
+}));
+
+const PartnerInfo = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  flex: 1,
+  [theme.breakpoints.down('sm')]: {
+    width: '100%',
+    justifyContent: 'flex-start'
+  }
+}));
+
+const OnlineStatus = styled('div')(({ online }: { online: boolean }) => ({
+  position: 'absolute',
+  top: '50%',
+  right: '12px',
+  transform: 'translateY(-50%)',
+  padding: '4px 8px',
+  borderRadius: '12px',
+  backgroundColor: online ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)',
+  color: online ? '#4CAF50' : '#f44336',
+  fontSize: '0.75rem',
+  fontWeight: 'bold',
+  '@media (max-width: 600px)': {
+    top: '12px',
+    right: '12px',
+    transform: 'none'
+  }
+}));
+
+const StartGameButton = styled(Button)(({ theme }) => ({
+  backgroundColor: theme.palette.primary.main,
+  color: 'white',
+  borderRadius: '20px',
+  padding: '8px 24px',
+  '&:hover': {
+    backgroundColor: theme.palette.primary.dark,
+  },
+  [theme.breakpoints.down('sm')]: {
+    width: '100%',
+    marginTop: '8px'
+  }
+}));
 
 const Dashboard: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -276,57 +337,27 @@ const Dashboard: React.FC = () => {
             ) : (
               <List>
                 {partners.map((partnerId) => (
-                  <React.Fragment key={partnerId}>
-                    <ListItem
-                      sx={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        borderRadius: 2,
-                        mb: 1,
-                        '&:hover': {
-                          background: 'rgba(255, 75, 110, 0.1)'
-                        }
-                      }}
+                  <PartnerItem key={partnerId}>
+                    <PartnerInfo>
+                      <Avatar sx={{ bgcolor: '#ff4b6e' }}>
+                        {partnerId.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Typography variant="body1">
+                        Parceiro {partnerId.substring(0, 6)}
+                      </Typography>
+                    </PartnerInfo>
+                    
+                    <OnlineStatus online={true}>
+                      Online
+                    </OnlineStatus>
+
+                    <StartGameButton
+                      onClick={() => handleStartGame(partnerId)}
+                      startIcon={<PlayArrowIcon />}
                     >
-                      <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: '#ff4b6e' }}>
-                          {partnerId.charAt(0).toUpperCase()}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Typography sx={{ color: '#fff' }}>
-                            Parceiro {partnerId.substring(0, 6)}
-                          </Typography>
-                        }
-                        secondary={
-                          <Chip 
-                            label="Online" 
-                            size="small" 
-                            sx={{ 
-                              backgroundColor: 'rgba(0, 255, 0, 0.2)',
-                              color: '#00ff00'
-                            }} 
-                          />
-                        }
-                      />
-                      <ListItemSecondaryAction>
-                        <Button
-                          variant="contained"
-                          startIcon={<PlayArrowIcon />}
-                          onClick={() => handleStartGame(partnerId)}
-                          sx={{
-                            backgroundColor: 'rgba(255, 75, 110, 0.9)',
-                            '&:hover': {
-                              backgroundColor: 'rgba(255, 75, 110, 1)'
-                            }
-                          }}
-                        >
-                          Iniciar Jogo
-                        </Button>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                    <Divider sx={{ my: 1, borderColor: 'rgba(255, 75, 110, 0.1)' }} />
-                  </React.Fragment>
+                      Iniciar Jogo
+                    </StartGameButton>
+                  </PartnerItem>
                 ))}
               </List>
             )}
