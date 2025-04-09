@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, collection, query, getDocs, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, getDocs, arrayUnion, arrayRemove, onSnapshot, where, writeBatch } from 'firebase/firestore';
 import {
   Box,
   Container,
@@ -15,11 +15,15 @@ import {
   DialogTitle,
   LinearProgress,
   Button,
+  Badge,
+  Collapse,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import CloseIcon from '@mui/icons-material/Close';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface CardData {
@@ -154,6 +158,51 @@ const SwipeIndicator = styled(Box)<{ direction: 'left' | 'right' }>(({ direction
   zIndex: 10,
 }));
 
+const MatchesButton = styled(IconButton)(({ theme }) => ({
+  position: 'fixed',
+  top: '20px',
+  right: '20px',
+  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backdropFilter: 'blur(5px)',
+  border: '2px solid #ff4b6e',
+  padding: '12px',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.1)',
+    backgroundColor: 'rgba(255, 75, 110, 0.2)',
+  },
+  zIndex: 1000,
+}));
+
+const MatchesPanel = styled(Box)(({ theme }) => ({
+  position: 'fixed',
+  top: '80px',
+  right: '20px',
+  width: '300px',
+  maxHeight: 'calc(100vh - 100px)',
+  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  backdropFilter: 'blur(10px)',
+  borderRadius: '20px',
+  border: '1px solid rgba(255, 75, 110, 0.3)',
+  padding: theme.spacing(2),
+  overflowY: 'auto',
+  zIndex: 999,
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+}));
+
+const MatchCard = styled(Card)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  backgroundColor: 'rgba(255, 75, 110, 0.1)',
+  border: '1px solid rgba(255, 75, 110, 0.3)',
+  borderRadius: '12px',
+  overflow: 'hidden',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.02)',
+    borderColor: '#ff4b6e',
+  },
+}));
+
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
   const { partnerId } = useParams<{ partnerId: string }>();
@@ -166,6 +215,9 @@ const Game: React.FC = () => {
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMatches, setShowMatches] = useState(false);
+  const [matches, setMatches] = useState<CardData[]>([]);
+  const [newMatch, setNewMatch] = useState(false);
 
   useEffect(() => {
     if (!currentUser || !partnerId) {
@@ -199,28 +251,49 @@ const Game: React.FC = () => {
     fetchCards();
   }, [currentUser, partnerId, navigate]);
 
-  // Monitorar matches em tempo real
+  // Melhorar o monitoramento de matches
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !partnerId) return;
 
     const userDoc = doc(db, 'users', currentUser.uid);
-    const unsubscribe = onSnapshot(userDoc, (doc) => {
+    const unsubscribe = onSnapshot(userDoc, async (doc) => {
       if (doc.exists()) {
         const userData = doc.data();
-        if (userData.recentMatch) {
-          const matchedCard = cards.find(card => card.id === userData.recentMatch);
-          if (matchedCard) {
-            setMatchedCard(matchedCard);
-            setShowMatchDialog(true);
-            // Limpar o recentMatch
-            updateDoc(userDoc, { recentMatch: null });
+        if (userData.matches) {
+          try {
+            // Buscar apenas as cartas que são matches
+            const matchesRef = collection(db, 'cards');
+            const matchesQuery = query(matchesRef, where('id', 'in', userData.matches));
+            const matchesSnapshot = await getDocs(matchesQuery);
+            
+            const matchedCards = matchesSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() })) as CardData[];
+            
+            setMatches(matchedCards);
+            
+            // Verificar se há um novo match
+            if (userData.recentMatch) {
+              const matchedCard = matchedCards.find(card => card.id === userData.recentMatch);
+              if (matchedCard) {
+                setNewMatch(true);
+                setMatchedCard(matchedCard);
+                setShowMatchDialog(true);
+                
+                // Limpar o recentMatch após mostrar o diálogo
+                setTimeout(async () => {
+                  await updateDoc(userDoc, { recentMatch: null });
+                }, 1000);
+              }
+            }
+          } catch (error) {
+            console.error('Erro ao buscar matches:', error);
           }
         }
       }
     });
 
     return () => unsubscribe();
-  }, [currentUser, cards]);
+  }, [currentUser, partnerId]);
 
   useEffect(() => {
     const updateDragConstraints = () => {
@@ -237,43 +310,59 @@ const Game: React.FC = () => {
   }, []);
 
   const handleSwipe = async (direction: 'left' | 'right') => {
-    if (!currentUser || !cards[currentCardIndex]) return;
+    if (!currentUser || !cards[currentCardIndex] || !partnerId) return;
 
     const cardId = cards[currentCardIndex].id;
     const userDoc = doc(db, 'users', currentUser.uid);
+    const partnerDoc = doc(db, 'users', partnerId);
 
-    if (direction === 'right') {
-      // Adicionar aos likes
-      await updateDoc(userDoc, {
-        likes: arrayUnion(cardId)
-      });
-
-      // Verificar se o parceiro também deu like
-      const userRef = doc(db, 'users', currentUser.uid);
-      const userData = await getDoc(userRef);
-      
-      if (userData.exists()) {
-        const partnerId = userData.data().partnerId;
-        if (partnerId) {
-          const partnerRef = doc(db, 'users', partnerId);
-          const partnerData = await getDoc(partnerRef);
-          
-          if (partnerData.exists() && partnerData.data().likes?.includes(cardId)) {
-            // É um match!
-            await updateDoc(userDoc, { recentMatch: cardId });
-            await updateDoc(partnerRef, { recentMatch: cardId });
-          }
+    try {
+      if (direction === 'right') {
+        // Verificar se já curtiu antes
+        const userData = await getDoc(userDoc);
+        if (userData.exists() && userData.data().likes?.includes(cardId)) {
+          return; // Já curtiu esta carta
         }
-      }
-    } else {
-      // Adicionar aos dislikes
-      await updateDoc(userDoc, {
-        dislikes: arrayUnion(cardId)
-      });
-    }
 
-    if (currentCardIndex < cards.length - 1) {
-      setCurrentCardIndex(prev => prev + 1);
+        // Adicionar aos likes
+        await updateDoc(userDoc, {
+          likes: arrayUnion(cardId)
+        });
+
+        // Verificar se o parceiro também curtiu
+        const partnerData = await getDoc(partnerDoc);
+        if (partnerData.exists() && partnerData.data().likes?.includes(cardId)) {
+          // É um match!
+          const batch = writeBatch(db);
+          
+          // Atualizar usuário atual
+          batch.update(userDoc, {
+            matches: arrayUnion(cardId),
+            recentMatch: cardId,
+            lastMatchTime: new Date().toISOString()
+          });
+          
+          // Atualizar parceiro
+          batch.update(partnerDoc, {
+            matches: arrayUnion(cardId),
+            recentMatch: cardId,
+            lastMatchTime: new Date().toISOString()
+          });
+          
+          await batch.commit();
+        }
+      } else {
+        // Adicionar aos dislikes
+        await updateDoc(userDoc, {
+          dislikes: arrayUnion(cardId)
+        });
+      }
+
+      // Remover a carta atual do array
+      setCards(prevCards => prevCards.filter((_, index) => index !== currentCardIndex));
+    } catch (error) {
+      console.error('Erro ao processar swipe:', error);
+      // Aqui você pode adicionar um feedback visual de erro se desejar
     }
   };
 
@@ -302,6 +391,32 @@ const Game: React.FC = () => {
 
   return (
     <StyledContainer maxWidth={false}>
+      <MatchesButton onClick={() => setShowMatches(!showMatches)}>
+        <Badge color="error" variant="dot" invisible={!newMatch}>
+          <LocalFireDepartmentIcon sx={{ color: '#ff4b6e' }} />
+        </Badge>
+      </MatchesButton>
+
+      <Collapse in={showMatches}>
+        <MatchesPanel>
+          <Typography variant="h6" gutterBottom sx={{ color: '#ff4b6e', textAlign: 'center' }}>
+            Seus Matches
+          </Typography>
+          {matches.map((match) => (
+            <MatchCard key={match.id}>
+              <CardContent>
+                <Typography variant="h6" sx={{ color: '#ff4b6e' }}>
+                  {match.title}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                  {match.description}
+                </Typography>
+              </CardContent>
+            </MatchCard>
+          ))}
+        </MatchesPanel>
+      </Collapse>
+
       <Box 
         sx={{ 
           py: { xs: 2, sm: 4, md: 6 },
