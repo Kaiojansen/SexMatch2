@@ -33,6 +33,7 @@ import {
   Badge,
   Collapse,
   Alert,
+  Paper,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -207,21 +208,45 @@ const MatchesButton = styled(IconButton)(({ theme }) => ({
   }
 }));
 
-const MatchesPanel = styled(Box)(({ theme }) => ({
-  position: 'fixed',
-  top: '80px',
-  right: '20px',
-  width: '300px',
-  maxHeight: 'calc(100vh - 100px)',
-  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-  backdropFilter: 'blur(10px)',
-  borderRadius: '20px',
-  border: '1px solid rgba(255, 75, 110, 0.3)',
+const MatchesPanel = styled(Paper)(({ theme }) => ({
+  position: 'relative',
+  width: 280,
+  maxHeight: '80vh',
+  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+  borderRadius: theme.spacing(2),
   padding: theme.spacing(2),
-  overflowY: 'auto',
-  zIndex: 999,
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+  backdropFilter: 'blur(10px)',
+  border: '2px solid #333',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column'
 }));
+
+const MatchesGrid = styled(Box)({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, 1fr)',
+  gap: '12px',
+  padding: '8px 4px',
+  maxHeight: '400px', // Altura máxima para 4 cartas (2x2)
+  overflowY: 'auto',
+  '&::-webkit-scrollbar': {
+    width: '4px',
+  },
+  '&::-webkit-scrollbar-track': {
+    background: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '4px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: '4px',
+    '&:hover': {
+      background: 'rgba(255, 255, 255, 0.4)',
+    },
+  },
+  // Esconde a scrollbar no Firefox
+  scrollbarWidth: 'thin',
+  scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1)'
+});
 
 const MatchCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(2),
@@ -547,7 +572,12 @@ const Game: React.FC = () => {
 
       <Collapse in={showMatches} sx={{ position: 'fixed', top: '80px', right: '20px', zIndex: 1000 }}>
         <MatchesPanel>
-          <Typography variant="h6" sx={{ mb: 2, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ 
+            mb: 2, 
+            textAlign: 'center',
+            color: '#fff',
+            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+          }}>
             Seus Matches
           </Typography>
           {matches.length === 0 ? (
@@ -555,12 +585,7 @@ const Game: React.FC = () => {
               Nenhum match ainda
             </Typography>
           ) : (
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
-              gap: 1.5,
-              p: 1
-            }}>
+            <MatchesGrid>
               {matches.map((match) => (
                 <MatchCard 
                   key={match.cardId}
@@ -572,6 +597,7 @@ const Game: React.FC = () => {
                     borderRadius: '8px',
                     overflow: 'hidden',
                     backgroundColor: '#000',
+                    touchAction: 'pan-y', // Permite scroll touch
                     '&:hover': {
                       transform: 'scale(1.05)',
                       border: '2px solid #666'
@@ -588,8 +614,11 @@ const Game: React.FC = () => {
                         left: 0,
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover'
+                        objectFit: 'cover',
+                        userSelect: 'none',
+                        pointerEvents: 'none' // Alternativa para prevenir drag
                       }}
+                      draggable={false}
                     />
                     <Box
                       sx={{
@@ -609,6 +638,7 @@ const Game: React.FC = () => {
                           fontSize: '0.8rem',
                           fontWeight: 'bold',
                           textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                          userSelect: 'none', // Previne seleção do texto
                         }}
                       >
                         {match.cardTitle}
@@ -617,7 +647,7 @@ const Game: React.FC = () => {
                   </Box>
                 </MatchCard>
               ))}
-            </Box>
+            </MatchesGrid>
           )}
         </MatchesPanel>
       </Collapse>
