@@ -187,13 +187,16 @@ const MatchesButton = styled(IconButton)(({ theme }) => ({
   backgroundColor: 'rgba(0, 0, 0, 0.6)',
   backdropFilter: 'blur(5px)',
   border: '2px solid #ff4b6e',
-  padding: '12px',
+  padding: '8px',
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'scale(1.1)',
     backgroundColor: 'rgba(255, 75, 110, 0.2)',
   },
   zIndex: 1000,
+  '& .MuiSvgIcon-root': {
+    fontSize: '1.2rem',
+  }
 }));
 
 const MatchesPanel = styled(Box)(({ theme }) => ({
@@ -421,6 +424,7 @@ const Game: React.FC = () => {
       await setDoc(likeRef, {
         userId: currentUser.uid,
         cardId: currentCard.id,
+        partnerId: partnerId,
         timestamp: serverTimestamp()
       });
 
@@ -431,28 +435,36 @@ const Game: React.FC = () => {
 
       console.log('Verificando like do parceiro:', partnerId);
       if (partnerLikeDoc.exists()) {
-        console.log('Match encontrado!');
-        // É um match! Criar documento de match
-        const matchId = `${currentCard.id}_${currentUser.uid}_${partnerId}`;
-        const matchRef = doc(db, 'matches', matchId);
-        
-        // Verificar se o match já existe
-        const existingMatch = await getDoc(matchRef);
-        if (!existingMatch.exists()) {
-          console.log('Criando novo match');
-          await setDoc(matchRef, {
-            cardId: currentCard.id,
-            users: [currentUser.uid, partnerId],
-            timestamp: serverTimestamp(),
-            cardTitle: currentCard.title,
-            cardImage: currentCard.image,
-            seenBy: [currentUser.uid] // Adiciona o usuário atual como tendo visto o match
-          });
+        const partnerLikeData = partnerLikeDoc.data();
+        // Verifica se o like do parceiro é realmente para este usuário
+        if (partnerLikeData.partnerId === currentUser.uid) {
+          console.log('Match encontrado!');
+          // É um match! Criar documento de match
+          const matchId = `${currentCard.id}_${currentUser.uid}_${partnerId}`;
+          const matchRef = doc(db, 'matches', matchId);
+          
+          // Verificar se o match já existe
+          const existingMatch = await getDoc(matchRef);
+          if (!existingMatch.exists()) {
+            console.log('Criando novo match');
+            await setDoc(matchRef, {
+              cardId: currentCard.id,
+              users: [currentUser.uid, partnerId],
+              timestamp: serverTimestamp(),
+              cardTitle: currentCard.title,
+              cardImage: currentCard.image,
+              seenBy: [currentUser.uid] // Adiciona o usuário atual como tendo visto o match
+            });
 
-          setMatchedCard(currentCard);
-          setShowMatchDialog(true);
-          setNewMatchCount(prev => prev + 1);
+            setMatchedCard(currentCard);
+            setShowMatchDialog(true);
+            setNewMatchCount(prev => prev + 1);
+          }
+        } else {
+          console.log('Like do parceiro encontrado, mas não é para este usuário');
         }
+      } else {
+        console.log('Parceiro ainda não deu like neste card');
       }
 
       // Avançar para o próximo card
@@ -471,8 +483,15 @@ const Game: React.FC = () => {
   return (
     <StyledContainer maxWidth={false}>
       <MatchesButton onClick={() => setShowMatches(!showMatches)}>
-        <Badge badgeContent={newMatchCount} color="error">
-          <FavoriteIcon />
+        <Badge badgeContent={newMatchCount} color="error" sx={{ 
+          '& .MuiBadge-badge': { 
+            fontSize: '0.7rem',
+            minWidth: '16px',
+            height: '16px',
+            padding: '0 4px'
+          }
+        }}>
+          <LocalFireDepartmentIcon />
         </Badge>
       </MatchesButton>
 
