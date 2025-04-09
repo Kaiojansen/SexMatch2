@@ -392,24 +392,30 @@ const Game: React.FC = () => {
 
             // Criar ou verificar documento de parceria
             const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+            console.log('ID da parceria gerado:', partnershipId);
             const partnershipRef = doc(db, 'partners', partnershipId);
             const partnershipDoc = await getDoc(partnershipRef);
 
             if (!partnershipDoc.exists()) {
+              console.log('Criando novo documento de parceria:', partnershipId);
               // Criar documento inicial de parceria
               const [user1, user2] = [currentUser.uid, partnerId].sort();
               await setDoc(partnershipRef, {
+                id: partnershipId,
                 user1: user1,
                 user2: user2,
                 createdAt: serverTimestamp(),
-                likes_user1: [], // Likes do primeiro usuário (em ordem alfabética)
-                likes_user2: [], // Likes do segundo usuário (em ordem alfabética)
+                likes_user1: [], 
+                likes_user2: [], 
                 fire_user1: [],
                 fire_user2: [],
                 matches: [],
                 new_matches_user1: 0,
                 new_matches_user2: 0
               });
+              console.log('Documento de parceria criado com sucesso');
+            } else {
+              console.log('Documento de parceria já existe:', partnershipId);
             }
           } else {
             console.log('Usuário não tem parceiro vinculado');
