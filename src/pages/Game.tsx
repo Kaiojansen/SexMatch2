@@ -465,13 +465,15 @@ const Game: React.FC = () => {
         setMatches(data.matches || []);
         
         // Carregar cartas marcadas como "quero muito" pelo parceiro
-        const partnerFires = isUser1 ? data.fire_user2 || [] : data.fire_user1 || [];
-        setHotMarkedCards(
-          partnerFires.reduce((acc, cardId) => ({
-            ...acc,
-            [cardId]: true
-          }), {})
-        );
+        const partnerFires = isUser1 ? data.fire_user2 : data.fire_user1;
+        const userFires = isUser1 ? data.fire_user1 : data.fire_user2;
+        
+        // Atualizar o estado dos cards marcados
+        const markedCards: { [key: string]: boolean } = {};
+        partnerFires.forEach((cardId: string) => {
+          markedCards[cardId] = true;
+        });
+        setHotMarkedCards(markedCards);
       }
     });
 
@@ -638,21 +640,32 @@ const Game: React.FC = () => {
 
   // Função para marcar uma carta como "quero muito"
   const handleMarkAsHot = async (match: Match) => {
-    if (!currentUser) return;
+    if (!currentUser || !partnerId) return;
 
     try {
+      const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+      const partnershipRef = doc(db, 'partners', partnershipId);
+      const partnershipDoc = await getDoc(partnershipRef);
+
+      if (!partnershipDoc.exists()) {
+        console.error('Documento de parceria não encontrado');
+        return;
+      }
+
+      const data = partnershipDoc.data() as PartnershipData;
+      const [user1, user2] = data.users;
+      const isUser1 = currentUser.uid === user1;
+
       // Verificar se já marcou esta carta
-      if (hotMarkedCards[match.cardId]) {
+      const userFires = isUser1 ? data.fire_user1 : data.fire_user2;
+      if (userFires.includes(match.cardId)) {
         console.log('Carta já foi marcada como quero muito');
         return;
       }
 
       // Adicionar o fire
-      const updatedFires = [...userFires, match.cardId];
-
-      // Atualizar o documento do usuário
-      await updateDoc(doc(db, 'users', currentUser.uid), {
-        fires: updatedFires
+      await updateDoc(partnershipRef, {
+        [isUser1 ? 'fire_user1' : 'fire_user2']: arrayUnion(match.cardId)
       });
 
       // Atualizar o estado local
@@ -661,27 +674,23 @@ const Game: React.FC = () => {
         [match.cardId]: true
       }));
 
-      // Criar notificação para o outro usuário
-      const otherUserId = currentUser.uid === match.user1 ? match.user2 : match.user1;
-      const notificationRef = doc(db, 'notifications', otherUserId);
-      
-      await setDoc(notificationRef, {
-        type: 'hot_mark',
-        cardId: match.cardId,
-        cardTitle: match.cardTitle,
-        from: currentUser.uid,
-        timestamp: serverTimestamp()
-      });
-
       console.log('Carta marcada como quero muito com sucesso!');
     } catch (error) {
       console.error('Erro ao marcar carta como quero muito:', error);
     }
   };
 
+  // Limpar notificações ao abrir os matches
+  const handleToggleMatches = () => {
+    setShowMatches(!showMatches);
+    if (!showMatches) {
+      setNewMatchCount(0); // Zerar contador ao abrir os matches
+    }
+  };
+
   return (
     <StyledContainer maxWidth={false}>
-      <MatchesButton onClick={() => setShowMatches(!showMatches)}>
+      <MatchesButton onClick={handleToggleMatches}>
         <Badge badgeContent={newMatchCount} color="error" sx={{ 
           '& .MuiBadge-badge': { 
             fontSize: '0.7rem',
@@ -725,10 +734,7 @@ const Game: React.FC = () => {
                   }}
                 >
                   {/* Mostrar HOT apenas quando o outro usuário marcou como "quero muito" */}
-                  {currentUser && match && (
-                    (currentUser.uid === match.user1 && hotMarkedCards[match.user2]) ||
-                    (currentUser.uid === match.user2 && hotMarkedCards[match.user1])
-                  ) && (
+                  {currentUser && match && hotMarkedCards[match.cardId] && (
                     <HotCardIndicator>
                       <Box sx={{ 
                         display: 'flex', 
@@ -990,10 +996,7 @@ const Game: React.FC = () => {
               overflow: 'hidden',
               position: 'relative'
             }}>
-              {selectedMatch && currentUser && (
-                (currentUser.uid === selectedMatch.user1 && hotMarkedCards[selectedMatch.user2]) ||
-                (currentUser.uid === selectedMatch.user2 && hotMarkedCards[selectedMatch.user1])
-              ) && (
+              {selectedMatch && currentUser && hotMarkedCards[selectedMatch.cardId] && (
                 <Box sx={{ 
                   position: 'absolute',
                   top: '16px',
