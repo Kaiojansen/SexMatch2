@@ -242,8 +242,8 @@ const ModalOverlay = styled(Box)({
   left: 0,
   right: 0,
   bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.7)',
-  zIndex: 999,
+  backgroundColor: 'rgba(0,0,0,0.85)',
+  zIndex: 9999,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center'
@@ -251,23 +251,25 @@ const ModalOverlay = styled(Box)({
 
 const ModalContent = styled(Box)({
   position: 'relative',
-  backgroundColor: '#fff',
-  padding: '20px',
+  backgroundColor: '#000',
+  padding: '15px',
   borderRadius: '15px',
-  boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
-  maxWidth: '90vw',
+  boxShadow: '0 5px 15px rgba(0,0,0,0.5)',
+  maxWidth: '80vw',
   maxHeight: '90vh',
-  overflow: 'auto',
-  zIndex: 1000,
+  overflow: 'hidden',
+  zIndex: 10000,
+  border: '2px solid #333'
 });
 
 const CloseButton = styled(IconButton)({
   position: 'absolute',
   top: '10px',
   right: '10px',
-  color: '#666',
+  color: '#fff',
+  zIndex: 10001,
   '&:hover': {
-    backgroundColor: 'rgba(0,0,0,0.04)'
+    backgroundColor: 'rgba(255,255,255,0.1)'
   }
 });
 
@@ -553,7 +555,12 @@ const Game: React.FC = () => {
               Nenhum match ainda
             </Typography>
           ) : (
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 2 }}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+              gap: 1.5,
+              p: 1
+            }}>
               {matches.map((match) => (
                 <MatchCard 
                   key={match.cardId}
@@ -561,8 +568,13 @@ const Game: React.FC = () => {
                   sx={{
                     cursor: 'pointer',
                     transition: 'transform 0.2s',
+                    border: '2px solid #333',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    backgroundColor: '#000',
                     '&:hover': {
                       transform: 'scale(1.05)',
+                      border: '2px solid #666'
                     }
                   }}
                 >
@@ -576,8 +588,7 @@ const Game: React.FC = () => {
                         left: 0,
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
+                        objectFit: 'cover'
                       }}
                     />
                     <Box
@@ -586,19 +597,18 @@ const Game: React.FC = () => {
                         bottom: 0,
                         left: 0,
                         right: 0,
-                        background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-                        padding: '20px 10px 10px',
-                        borderRadius: '0 0 8px 8px',
+                        background: 'linear-gradient(transparent, rgba(0,0,0,0.9))',
+                        padding: '15px 8px 8px',
                       }}
                     >
                       <Typography
-                        variant="subtitle1"
+                        variant="subtitle2"
                         sx={{
                           color: 'white',
                           textAlign: 'center',
-                          fontSize: '0.9rem',
+                          fontSize: '0.8rem',
                           fontWeight: 'bold',
-                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
                         }}
                       >
                         {match.cardTitle}
@@ -789,18 +799,26 @@ const Game: React.FC = () => {
             <CloseButton onClick={() => setSelectedMatch(null)}>
               <CloseIcon />
             </CloseButton>
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ 
+              textAlign: 'center',
+              backgroundColor: '#000',
+              borderRadius: '10px',
+              overflow: 'hidden'
+            }}>
               <img
                 src={selectedMatch.cardImage}
                 alt={selectedMatch.cardTitle}
                 style={{
-                  maxWidth: '100%',
+                  width: '100%',
                   maxHeight: '70vh',
-                  borderRadius: '10px',
-                  marginBottom: '20px',
+                  objectFit: 'contain'
                 }}
               />
-              <Typography variant="h5" sx={{ mt: 2 }}>
+              <Typography variant="h6" sx={{ 
+                mt: 2, 
+                color: '#fff',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+              }}>
                 {selectedMatch.cardTitle}
               </Typography>
             </Box>
