@@ -32,7 +32,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { motion } from 'framer-motion';
 
@@ -83,26 +83,44 @@ const Dashboard: React.FC = () => {
     }
 
     try {
-      // Verificar se o código existe
-      const partnerDoc = await getDoc(doc(db, 'users', partnerCode));
-      if (!partnerDoc.exists()) {
+      // Buscar usuário pelo código
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('code', '==', partnerCode));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
         setError('Código de parceiro inválido');
+        return;
+      }
+
+      const partnerDoc = querySnapshot.docs[0];
+      const partnerId = partnerDoc.id;
+
+      // Verificar se não é o próprio usuário
+      if (partnerId === currentUser?.uid) {
+        setError('Você não pode adicionar a si mesmo como parceiro');
+        return;
+      }
+
+      // Verificar se já é parceiro
+      if (partners.includes(partnerId)) {
+        setError('Este parceiro já foi adicionado');
         return;
       }
 
       // Atualizar o documento do usuário atual
       const userDoc = doc(db, 'users', currentUser?.uid || '');
       await updateDoc(userDoc, {
-        partners: arrayUnion(partnerCode)
+        partners: arrayUnion(partnerId)
       });
 
       // Atualizar o documento do parceiro
-      const partnerUserDoc = doc(db, 'users', partnerCode);
+      const partnerUserDoc = doc(db, 'users', partnerId);
       await updateDoc(partnerUserDoc, {
         partners: arrayUnion(currentUser?.uid || '')
       });
 
-      setPartners([...partners, partnerCode]);
+      setPartners([...partners, partnerId]);
       setPartnerCode('');
       setOpen(false);
       setSuccess('Parceiro adicionado com sucesso!');
