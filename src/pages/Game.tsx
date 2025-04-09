@@ -321,6 +321,7 @@ const Game: React.FC = () => {
         const newMatches: Match[] = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
+          // Verifica se o match é entre o usuário atual e seu parceiro
           if (data.users.includes(partnerId)) {
             newMatches.push({
               cardId: data.cardId,
@@ -444,7 +445,8 @@ const Game: React.FC = () => {
             users: [currentUser.uid, partnerId],
             timestamp: serverTimestamp(),
             cardTitle: currentCard.title,
-            cardImage: currentCard.image
+            cardImage: currentCard.image,
+            seenBy: [currentUser.uid] // Adiciona o usuário atual como tendo visto o match
           });
 
           setMatchedCard(currentCard);
