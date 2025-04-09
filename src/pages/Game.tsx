@@ -55,8 +55,8 @@ interface Match {
   cardId: string;
   cardTitle: string;
   cardImage: string;
-  fire_user1?: { [key: string]: boolean };
-  fire_user2?: { [key: string]: boolean };
+  user1: string;
+  user2: string;
 }
 
 interface PartnershipData {
@@ -366,6 +366,7 @@ const Game: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [hotMarkedCards, setHotMarkedCards] = useState<{ [cardId: string]: boolean }>({});
+  const [userFires, setUserFires] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -477,6 +478,31 @@ const Game: React.FC = () => {
     return () => unsubscribe();
   }, [currentUser, partnerId]);
 
+  // Carregar os "quero muito" do usuário
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const loadUserFires = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserFires(userData.fires || []);
+          // Atualizar também o estado local dos cards marcados
+          const markedCards: { [key: string]: boolean } = {};
+          userData.fires?.forEach((cardId: string) => {
+            markedCards[cardId] = true;
+          });
+          setHotMarkedCards(markedCards);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar quero muito:', error);
+      }
+    };
+
+    loadUserFires();
+  }, [currentUser]);
+
   const handleDrag = (event: any, info: any) => {
     setTranslateX(info.offset.x);
     setRotate(info.offset.x * 0.1);
@@ -567,8 +593,8 @@ const Game: React.FC = () => {
           cardId: currentCard.id,
           cardTitle: currentCard.title,
           cardImage: currentCard.image,
-          fire_user1: {},
-          fire_user2: {}
+          user1: currentUser.uid,
+          user2: partnerId
         };
 
         try {
@@ -612,27 +638,11 @@ const Game: React.FC = () => {
 
   // Função para marcar uma carta como "quero muito"
   const handleMarkAsHot = async (match: Match) => {
-    if (!currentUser || !partnerId) return;
+    if (!currentUser) return;
 
     try {
-      const partnershipId = [currentUser.uid, partnerId].sort().join('_');
-      const partnershipRef = doc(db, 'partners', partnershipId);
-      const partnershipDoc = await getDoc(partnershipRef);
-
-      if (!partnershipDoc.exists()) {
-        console.error('Documento de parceria não encontrado');
-        return;
-      }
-
-      const data = partnershipDoc.data() as PartnershipData;
-      const [user1, user2] = data.users;
-      const isUser1 = currentUser.uid === user1;
-      
-      // Pegar os "quero muito" do usuário atual
-      const userFires = isUser1 ? data.fire_user1 || [] : data.fire_user2 || [];
-
       // Verificar se já marcou esta carta
-      if (userFires.includes(match.cardId)) {
+      if (hotMarkedCards[match.cardId]) {
         console.log('Carta já foi marcada como quero muito');
         return;
       }
@@ -640,30 +650,32 @@ const Game: React.FC = () => {
       // Adicionar o fire
       const updatedFires = [...userFires, match.cardId];
 
-      // Atualizar o documento
-      await updateDoc(partnershipRef, {
-        [isUser1 ? 'fire_user1' : 'fire_user2']: updatedFires
+      // Atualizar o documento do usuário
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        fires: updatedFires
       });
 
-      // Atualizar estado local
+      // Atualizar o estado local
       setHotMarkedCards(prev => ({
         ...prev,
         [match.cardId]: true
       }));
 
-      // Notificar o parceiro
-      const notificationRef = doc(db, 'notifications', partnerId);
+      // Criar notificação para o outro usuário
+      const otherUserId = currentUser.uid === match.user1 ? match.user2 : match.user1;
+      const notificationRef = doc(db, 'notifications', otherUserId);
+      
       await setDoc(notificationRef, {
         type: 'hot_mark',
         cardId: match.cardId,
         cardTitle: match.cardTitle,
         from: currentUser.uid,
         timestamp: serverTimestamp()
-      }, { merge: true });
+      });
 
+      console.log('Carta marcada como quero muito com sucesso!');
     } catch (error) {
-      console.error('Erro ao marcar carta como quente:', error);
-      setError('Erro ao marcar carta. Tente novamente.');
+      console.error('Erro ao marcar carta como quero muito:', error);
     }
   };
 
@@ -712,7 +724,11 @@ const Game: React.FC = () => {
                     }
                   }}
                 >
-                  {hotMarkedCards[match.cardId] && (
+                  {/* Mostrar HOT apenas quando o outro usuário marcou como "quero muito" */}
+                  {currentUser && match && (
+                    (currentUser.uid === match.user1 && hotMarkedCards[match.user2]) ||
+                    (currentUser.uid === match.user2 && hotMarkedCards[match.user1])
+                  ) && (
                     <HotCardIndicator>
                       <Box sx={{ 
                         display: 'flex', 
@@ -974,7 +990,10 @@ const Game: React.FC = () => {
               overflow: 'hidden',
               position: 'relative'
             }}>
-              {selectedMatch.fire_user1 && selectedMatch.fire_user1[partnerId || ''] && (
+              {selectedMatch && currentUser && (
+                (currentUser.uid === selectedMatch.user1 && hotMarkedCards[selectedMatch.user2]) ||
+                (currentUser.uid === selectedMatch.user2 && hotMarkedCards[selectedMatch.user1])
+              ) && (
                 <Box sx={{ 
                   position: 'absolute',
                   top: '16px',
@@ -984,9 +1003,10 @@ const Game: React.FC = () => {
                   padding: '4px 8px',
                   borderRadius: '4px',
                   fontSize: '12px',
-                  fontWeight: 'bold'
+                  fontWeight: 'bold',
+                  animation: 'pulse 2s infinite'
                 }}>
-                  Quero Muito!
+                  HOT!
                 </Box>
               )}
               <img
