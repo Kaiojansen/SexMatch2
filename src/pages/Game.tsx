@@ -43,6 +43,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { motion, AnimatePresence } from 'framer-motion';
+import '@fontsource/staatliches';
 
 interface CardData {
   id: string;
@@ -103,6 +104,71 @@ const CardWrapper = styled(Box)(({ theme }) => ({
     maxWidth: '100%',
     margin: '0 16px'
   }
+}));
+
+const CardContainer = styled(Box)(({ theme }) => ({
+  position: 'relative',
+  width: '100%',
+  maxWidth: '400px',
+  height: '600px',
+  margin: '0 auto',
+  perspective: '1000px',
+  '& .card': {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    transformStyle: 'preserve-3d',
+    transition: 'transform 0.3s ease',
+    '& .card-content': {
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+      borderRadius: '20px',
+      overflow: 'hidden',
+      '& .card-image': {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+      },
+      '& .card-overlay': {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: '20px',
+        background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.85) 20%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%)',
+        backdropFilter: 'blur(8px)',
+        '& .card-title': {
+          color: 'rgba(241, 0, 0, 0.5)',
+          fontSize: '1.8rem',
+          fontWeight: 700,
+          marginBottom: '8px',
+          textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+        },
+        '& .card-description': {
+          color: 'rgba(255,255,255,0.95)',
+          fontSize: '1rem',
+          textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+        },
+      },
+      '& .swipe-indicator': {
+        position: 'absolute',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        fontSize: '3rem',
+        opacity: 0.8,
+        '&.right': {
+          right: '20px',
+          color: '#4CAF50',
+        },
+        '&.left': {
+          left: '20px',
+          color: '#F44336',
+        },
+      },
+    },
+  },
 }));
 
 const StyledCard = styled(motion.div)({
@@ -350,6 +416,20 @@ const HotButton = styled(Button)(({ theme }) => ({
     pointerEvents: 'none',
   }
 }));
+
+const GameContainer = styled(Box)(({ theme }) => ({
+  // ... existing styles ...
+}));
+
+const Title = styled(Typography)({
+  fontFamily: '"Staatliches", cursive',
+  fontSize: '3rem',
+  color: '#fff',
+  textAlign: 'center',
+  marginBottom: '2rem',
+  textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+  letterSpacing: '2px'
+});
 
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
@@ -713,7 +793,7 @@ const Game: React.FC = () => {
   };
 
   return (
-    <StyledContainer maxWidth={false}>
+    <GameContainer>
       <MatchesButton onClick={handleToggleMatches}>
         <Badge badgeContent={newMatchCount} color="error" sx={{ 
           '& .MuiBadge-badge': { 
@@ -757,7 +837,6 @@ const Game: React.FC = () => {
                     }
                   }}
                 >
-                  {/* Mostrar HOT apenas quando o outro usuário marcou como "quero muito" */}
                   {currentUser && hotMarkedCards[match.cardId] && (
                     <HotCardIndicator>
                       <Box sx={{ 
@@ -846,21 +925,17 @@ const Game: React.FC = () => {
           minHeight: '100vh'
         }}
       >
-        <Typography 
-          variant="h3" 
-          gutterBottom 
-          sx={{ 
-            fontWeight: 'bold',
-            color: '#fff',
-            textAlign: 'center',
-            mb: { xs: 2, sm: 4 },
-            fontSize: { xs: '1.8rem', sm: '2.5rem', md: '3rem' },
-            textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-            fontFamily: '"Playfair Display", serif',
-          }}
-        >
+        <Title variant="h1" sx={{ 
+          fontFamily: '"Staatliches", cursive',
+          fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' },
+          color: '#fff',
+          textAlign: 'center',
+          mb: { xs: 2, sm: 4 },
+          textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+          letterSpacing: '2px'
+        }}>
           SexMatch
-        </Typography>
+        </Title>
 
         <CardWrapper>
           <AnimatePresence mode="wait">
@@ -1070,7 +1145,7 @@ const Game: React.FC = () => {
           {error}
         </Alert>
       )}
-    </StyledContainer>
+    </GameContainer>
   );
 };
 

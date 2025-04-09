@@ -5,12 +5,27 @@ import { Box, Button, Container, Typography, Paper, CircularProgress, Snackbar, 
 import GoogleIcon from '@mui/icons-material/Google';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { keyframes } from '@mui/system';
+import { motion } from 'framer-motion';
+import '@fontsource/staatliches';
+import styled from '@emotion/styled';
 
 const pulseAnimation = keyframes`
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
 `;
+
+const Title = styled(Typography)({
+  fontFamily: '"Staatliches", cursive',
+  fontSize: '3.5rem',
+  color: '#fff',
+  textAlign: 'center',
+  marginBottom: '0',
+  textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+  letterSpacing: '1px',
+  display: 'inline-block',
+  lineHeight: 1
+});
 
 const Login: React.FC = () => {
   const { signInWithGoogle, error: authError } = useAuth();
@@ -103,31 +118,22 @@ const Login: React.FC = () => {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              animation: `${pulseAnimation} 2s infinite ease-in-out`
+              justifyContent: 'center',
+              gap: 1.5,
+              animation: `${pulseAnimation} 2s infinite ease-in-out`,
+              width: '100%',
+              mb: 3
             }}
           >
             <FavoriteIcon 
               sx={{ 
-                fontSize: { xs: 40, sm: 50 }, 
+                fontSize: { xs: 35, sm: 45 }, 
                 color: '#ff4b6e',
-                filter: 'drop-shadow(0 0 10px rgba(255,75,110,0.5))'
+                filter: 'drop-shadow(0 0 10px rgba(255,75,110,0.5))',
+                marginTop: '2px'
               }} 
             />
-            <Typography 
-              variant="h3" 
-              component="h1" 
-              sx={{
-                fontFamily: "'Cinzel', serif",
-                fontWeight: 700,
-                color: '#fff',
-                textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-                letterSpacing: '0.1em'
-              }}
-            >
-              SexMatch
-            </Typography>
+            <Title variant="h1">SEXMATCH</Title>
           </Box>
 
           <Typography 

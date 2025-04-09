@@ -1,0 +1,3 @@
+[33m06918c8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m feat: melhorada fluidez e direção do swipe das cartas
+[33md992553[m fix: corrigida lógica do HOT para aparecer apenas para o outro usuário
+[33mecb229a[m fix: corrigido sistema de notificações para notificar ambos os usuários no match
