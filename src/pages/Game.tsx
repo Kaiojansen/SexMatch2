@@ -435,7 +435,7 @@ const GameContainer = styled(Box)(({ theme }) => ({
 }));
 
 const Title = styled(Typography)({
-  fontFamily: '"Staatliches", cursive',
+  fontFamily: '"Stabillo", cursive',
   fontSize: '3rem',
   color: '#fff',
   textAlign: 'center',
@@ -949,7 +949,7 @@ const Game: React.FC = () => {
         }}
       >
         <Title variant="h1" sx={{ 
-          fontFamily: '"Staatliches", cursive',
+          fontFamily: '"Stabillo", cursive',
           fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' },
           color: '#fff',
           textAlign: 'center',

@@ -16,14 +16,13 @@ const pulseAnimation = keyframes`
 `;
 
 const Title = styled(Typography)({
-  fontFamily: '"Staatliches", cursive',
+  fontFamily: '"Stabillo", cursive',
   fontSize: '3.5rem',
-  color: '#fff',
+  color: '#ff4b6e',
   textAlign: 'center',
-  marginBottom: '0',
+  marginBottom: '2rem',
   textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-  letterSpacing: '1px',
-  display: 'inline-block',
+  letterSpacing: '2px',
   lineHeight: 1
 });
 
