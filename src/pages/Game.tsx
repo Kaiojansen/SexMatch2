@@ -438,7 +438,7 @@ const GameContainer = styled(Box)(({ theme }) => ({
 }));
 
 const Title = styled(Typography)({
-  fontFamily: '"Spantaran", sans-serif',
+  fontFamily: '"Staatliches", cursive',
   fontSize: '3rem',
   color: '#fff',
   textAlign: 'center',
@@ -837,12 +837,16 @@ const Game: React.FC = () => {
 
       <Collapse in={showMatches} sx={{ position: 'fixed', top: '80px', right: '20px', zIndex: 1000 }}>
         <MatchesPanel>
-          <Typography variant="h6" sx={{ 
-            mb: 2, 
-            textAlign: 'center',
-            color: '#fff',
-            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-          }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              mb: 2, 
+              textAlign: 'center',
+              color: '#fff',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+              fontSize: '1.2rem'
+            }}
+          >
             Seus Matches
           </Typography>
           {matches && matches.length > 0 ? (
@@ -893,12 +897,11 @@ const Game: React.FC = () => {
                         variant="h6"
                         sx={{
                           color: '#fff',
-                          fontSize: '1.1rem',
+                          fontSize: '0.9rem',
                           fontWeight: 'bold',
                           textAlign: 'center',
                           textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                          mb: 1,
-                          fontFamily: '"Stabillo", sans-serif'
+                          mb: 1
                         }}
                       >
                         {match.cardTitle}
@@ -966,7 +969,7 @@ const Game: React.FC = () => {
         }}
       >
         <Title variant="h1" sx={{ 
-          fontFamily: '"Spantaran", sans-serif',
+          fontFamily: '"Staatliches", cursive',
           fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' },
           color: '#fff',
           textAlign: 'center',
@@ -1111,7 +1114,7 @@ const Game: React.FC = () => {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-              fontFamily: '"Stabillo", sans-serif',
+              fontFamily: '"Staatliches", cursive',
               fontSize: '3rem'
             }}
           >
@@ -1166,7 +1169,7 @@ const Game: React.FC = () => {
                 variant="h5" 
                 sx={{ 
                   color: '#fff',
-                  fontFamily: '"Stabillo", sans-serif',
+                  fontFamily: '"Staatliches", cursive',
                   fontSize: '2rem',
                   mb: 2,
                   textShadow: '0 2px 4px rgba(0,0,0,0.3)'
@@ -1236,7 +1239,6 @@ const Game: React.FC = () => {
               overflow: 'hidden',
               position: 'relative'
             }}>
-              {/* Mostrar HOT apenas quando o outro usuário marcou como "quero muito" */}
               {currentUser && hotMarkedCards[selectedMatch.cardId] && (
                 <Box sx={{ 
                   position: 'absolute',
@@ -1265,7 +1267,9 @@ const Game: React.FC = () => {
               <Typography variant="h6" sx={{ 
                 mt: 2, 
                 color: '#fff',
-                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                fontFamily: '"Staatliches", cursive',
+                fontSize: '2rem'
               }}>
                 {selectedMatch.cardTitle}
               </Typography>
