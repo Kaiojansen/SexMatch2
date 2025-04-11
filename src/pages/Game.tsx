@@ -45,6 +45,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { motion, AnimatePresence } from 'framer-motion';
 import '@fontsource/staatliches';
 import MatchAnimation from '../components/MatchAnimation';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 interface CardData {
   id: string;
@@ -71,6 +72,8 @@ interface PartnershipData {
   likes_user2: string[];
   fire_user1: string[];
   fire_user2: string[];
+  feito_user1: string[];
+  feito_user2: string[];
   matches: Match[];
   new_matches_user1: number;
   new_matches_user2: number;
@@ -347,6 +350,18 @@ const MatchCard = styled(Card)(({ theme }) => ({
     '& .card-overlay': {
       opacity: 1
     }
+  },
+  '&.feito': {
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(76, 175, 80, 0.3)',
+      zIndex: 1
+    }
   }
 }));
 
@@ -468,6 +483,8 @@ const Game: React.FC = () => {
   const [hotMarkedCards, setHotMarkedCards] = useState<{ [cardId: string]: boolean }>({});
   const [userFires, setUserFires] = useState<string[]>([]);
   const [showMatchAnimation, setShowMatchAnimation] = useState(false);
+  const [userFeitos, setUserFeitos] = useState<string[]>([]);
+  const [partnerFeitos, setPartnerFeitos] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -515,6 +532,8 @@ const Game: React.FC = () => {
                 likes_user2: [], 
                 fire_user1: [],
                 fire_user2: [],
+                feito_user1: [],
+                feito_user2: [],
                 matches: [],
                 new_matches_user1: 0,
                 new_matches_user2: 0
@@ -586,6 +605,10 @@ const Game: React.FC = () => {
         const partnerFires = isUser1 ? data.fire_user2 || [] : data.fire_user1 || [];
         const myFires = isUser1 ? data.fire_user1 || [] : data.fire_user2 || [];
         
+        // Carregar cartas marcadas como "feito" pelo parceiro
+        const partnerFeitos = isUser1 ? data.feito_user2 || [] : data.feito_user1 || [];
+        const myFeitos = isUser1 ? data.feito_user1 || [] : data.feito_user2 || [];
+        
         // Atualizar o estado dos cards marcados pelo parceiro
         const markedCards: { [key: string]: boolean } = {};
         partnerFires.forEach((cardId: string) => {
@@ -595,6 +618,10 @@ const Game: React.FC = () => {
 
         // Atualizar meus fires
         setUserFires(myFires);
+
+        // Atualizar feitos
+        setUserFeitos(myFeitos);
+        setPartnerFeitos(partnerFeitos);
 
         // Atualizar o contador de novos matches
         setNewMatchCount(isUser1 ? data.new_matches_user1 || 0 : data.new_matches_user2 || 0);
@@ -820,13 +847,46 @@ const Game: React.FC = () => {
     }
   };
 
-  const handleMatchesClick = () => {
-    navigate('/matches');
+  const handleMarkAsDone = async (match: Match) => {
+    if (!currentUser || !partnerId) return;
+
+    try {
+      const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+      const partnershipRef = doc(db, 'partners', partnershipId);
+      const partnershipDoc = await getDoc(partnershipRef);
+
+      if (!partnershipDoc.exists()) {
+        console.error('Documento de parceria não encontrado');
+        return;
+      }
+
+      const data = partnershipDoc.data() as PartnershipData;
+      const isUser1 = data.user1 === currentUser.uid;
+
+      // Verificar se já marcou esta carta
+      const userFeitos = isUser1 ? data.feito_user1 || [] : data.feito_user2 || [];
+      if (userFeitos.includes(match.cardId)) {
+        console.log('Carta já foi marcada como feita');
+        return;
+      }
+
+      // Adicionar o feito
+      await updateDoc(partnershipRef, {
+        [isUser1 ? 'feito_user1' : 'feito_user2']: arrayUnion(match.cardId)
+      });
+
+      // Atualizar o estado local
+      setUserFeitos(prev => [...prev, match.cardId]);
+
+      console.log('Carta marcada como feita com sucesso!');
+    } catch (error) {
+      console.error('Erro ao marcar carta como feita:', error);
+    }
   };
 
   return (
     <GameContainer>
-      <MatchesButton onClick={handleMatchesClick}>
+      <MatchesButton onClick={handleToggleMatches}>
         <Badge badgeContent={newMatchCount} color="error" sx={{ 
           '& .MuiBadge-badge': { 
             fontSize: '0.7rem',
@@ -857,15 +917,11 @@ const Game: React.FC = () => {
             <MatchesGrid>
               {matches.map((match) => (
                 <MatchCard 
-                  key={match.cardId}
+                  key={match.cardId} 
                   onClick={() => setSelectedMatch(match)}
+                  className={userFeitos.includes(match.cardId) || partnerFeitos.includes(match.cardId) ? 'feito' : ''}
                 >
-                  {/* Container da imagem com gradiente */}
-                  <Box sx={{ 
-                    position: 'relative',
-                    paddingTop: '100%', // Aspect ratio 1:1
-                    background: '#000'
-                  }}>
+                  <Box sx={{ position: 'relative', paddingTop: '100%' }}>
                     <img
                       src={match.cardImage}
                       alt={match.cardTitle}
@@ -878,76 +934,45 @@ const Game: React.FC = () => {
                         objectFit: 'cover'
                       }}
                     />
-                    
-                    {/* Overlay com gradiente e título */}
-                    <Box
-                      className="card-overlay"
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0.95) 100%)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'flex-end',
-                        padding: '16px',
-                        transition: 'opacity 0.3s ease',
-                        opacity: 0.8
-                      }}
-                    >
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          color: '#fff',
-                          fontSize: '0.9rem',
-                          fontWeight: 'bold',
-                          textAlign: 'center',
-                          textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                          mb: 1
-                        }}
-                      >
+                    <Box className="card-overlay" sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%)',
+                      opacity: 0.7,
+                      transition: 'opacity 0.3s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      padding: '16px'
+                    }}>
+                      <Typography variant="h6" sx={{ 
+                        color: '#fff',
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                        fontSize: '1.2rem',
+                        fontWeight: 'bold'
+                      }}>
                         {match.cardTitle}
                       </Typography>
-                    </Box>
-
-                    {/* Indicador HOT */}
-                    {currentUser && hotMarkedCards[match.cardId] && (
-                      <Box 
-                        sx={{ 
+                      {(userFeitos.includes(match.cardId) || partnerFeitos.includes(match.cardId)) && (
+                        <Box sx={{ 
                           position: 'absolute',
-                          top: '12px',
-                          right: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: 'linear-gradient(45deg, #ff4b6e, #ff1f4b)',
-                          padding: '6px 12px',
-                          borderRadius: '20px',
-                          boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)',
-                          animation: 'pulse 2s infinite',
-                          '@keyframes pulse': {
-                            '0%': { transform: 'scale(1)', opacity: 0.8 },
-                            '50%': { transform: 'scale(1.05)', opacity: 1 },
-                            '100%': { transform: 'scale(1)', opacity: 0.8 }
-                          }
-                        }}
-                      >
-                        <LocalFireDepartmentIcon sx={{ fontSize: '1.2rem', color: '#fff' }} />
-                        <Typography 
-                          sx={{ 
-                            color: '#fff',
-                            fontSize: '0.8rem',
-                            fontWeight: 'bold',
-                            textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-                            letterSpacing: '0.5px'
-                          }}
-                        >
-                          HOT
-                        </Typography>
-                      </Box>
-                    )}
+                          top: '8px',
+                          left: '8px',
+                          backgroundColor: 'rgba(76, 175, 80, 0.9)',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          animation: 'pulse 2s infinite'
+                        }}>
+                          JÁ FIZEMOS!
+                        </Box>
+                      )}
+                    </Box>
                   </Box>
                 </MatchCard>
               ))}
@@ -1257,6 +1282,22 @@ const Game: React.FC = () => {
                   HOT!
                 </Box>
               )}
+              {(userFeitos.includes(selectedMatch.cardId) || partnerFeitos.includes(selectedMatch.cardId)) && (
+                <Box sx={{ 
+                  position: 'absolute',
+                  top: '16px',
+                  left: '16px',
+                  backgroundColor: 'rgba(0, 255, 0, 0.8)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  animation: 'pulse 2s infinite'
+                }}>
+                  JÁ FIZEMOS!
+                </Box>
+              )}
               <img
                 src={selectedMatch.cardImage}
                 alt={selectedMatch.cardTitle}
@@ -1275,14 +1316,31 @@ const Game: React.FC = () => {
                 {selectedMatch.cardTitle}
               </Typography>
               
-              <HotButton
-                onClick={() => handleMarkAsHot(selectedMatch)}
-                startIcon={<LocalFireDepartmentIcon />}
-                className={userFires.includes(selectedMatch.cardId) ? 'marked' : ''}
-                disabled={userFires.includes(selectedMatch.cardId)}
-              >
-                {userFires.includes(selectedMatch.cardId) ? 'MUITO QUENTE! 🔥' : 'QUERO MUITO! 🔥'}
-              </HotButton>
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+                <HotButton
+                  onClick={() => handleMarkAsHot(selectedMatch)}
+                  startIcon={<LocalFireDepartmentIcon />}
+                  className={userFires.includes(selectedMatch.cardId) ? 'marked' : ''}
+                  disabled={userFires.includes(selectedMatch.cardId)}
+                >
+                  {userFires.includes(selectedMatch.cardId) ? 'MUITO QUENTE! 🔥' : 'QUERO MUITO! 🔥'}
+                </HotButton>
+
+                <HotButton
+                  onClick={() => handleMarkAsDone(selectedMatch)}
+                  startIcon={<CheckCircleIcon />}
+                  className={userFeitos.includes(selectedMatch.cardId) ? 'marked' : ''}
+                  disabled={userFeitos.includes(selectedMatch.cardId)}
+                  sx={{
+                    background: 'linear-gradient(45deg, #4CAF50, #45a049)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #45a049, #3d8b40)',
+                    }
+                  }}
+                >
+                  {userFeitos.includes(selectedMatch.cardId) ? 'JÁ FIZEMOS! ✅' : 'JÁ FIZEMOS ✅'}
+                </HotButton>
+              </Box>
             </Box>
           </ModalContent>
         </ModalOverlay>
