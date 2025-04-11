@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import PartnerRequest from './pages/PartnerRequest';
 import Game from './pages/Game';
 import Admin from './pages/Admin';
+import './styles/fonts.css';
 
 const theme = createTheme({
   palette: {

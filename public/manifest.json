@@ -1,6 +1,6 @@
 {
-  "short_name": "Couples Game",
-  "name": "Couples Game - Interactive Game for Couples",
+  "short_name": "SexMatch",
+  "name": "SexMatch - Descubra e compartilhe suas fantasias",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +20,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#FF4B6E",
+  "background_color": "#000000"
 } 

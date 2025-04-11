@@ -16,14 +16,15 @@ const pulseAnimation = keyframes`
 `;
 
 const Title = styled(Typography)({
-  fontFamily: '"Stabillo", cursive',
+  fontFamily: '"Stabillo", sans-serif',
   fontSize: '3.5rem',
-  color: '#ff4b6e',
+  color: '#fff',
   textAlign: 'center',
-  marginBottom: '2rem',
   textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
   letterSpacing: '2px',
-  lineHeight: 1
+  lineHeight: '0.8',
+  display: 'flex',
+  alignItems: 'center'
 });
 
 const Login: React.FC = () => {
@@ -129,10 +130,11 @@ const Login: React.FC = () => {
                 fontSize: { xs: 35, sm: 45 }, 
                 color: '#ff4b6e',
                 filter: 'drop-shadow(0 0 10px rgba(255,75,110,0.5))',
-                marginTop: '2px'
+                marginTop: '-2px',
+                display: 'flex'
               }} 
             />
-            <Title variant="h1">SEXMATCH</Title>
+            <Title variant="h1">SexMatch</Title>
           </Box>
 
           <Typography 

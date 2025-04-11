@@ -44,6 +44,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { motion, AnimatePresence } from 'framer-motion';
 import '@fontsource/staatliches';
+import MatchAnimation from '../components/MatchAnimation';
 
 interface CardData {
   id: string;
@@ -435,7 +436,7 @@ const GameContainer = styled(Box)(({ theme }) => ({
 }));
 
 const Title = styled(Typography)({
-  fontFamily: '"Stabillo", cursive',
+  fontFamily: '"Spantaran", sans-serif',
   fontSize: '3rem',
   color: '#fff',
   textAlign: 'center',
@@ -464,6 +465,7 @@ const Game: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [hotMarkedCards, setHotMarkedCards] = useState<{ [cardId: string]: boolean }>({});
   const [userFires, setUserFires] = useState<string[]>([]);
+  const [showMatchAnimation, setShowMatchAnimation] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -723,6 +725,7 @@ const Game: React.FC = () => {
           setMatchedCard(currentCard);
           setShowMatchDialog(true);
           setNewMatchCount(prev => prev + 1);
+          setShowMatchAnimation(true);
         } catch (error) {
           console.error('Erro ao processar match:', error);
           setError('Erro ao processar o match. Tente novamente.');
@@ -949,7 +952,7 @@ const Game: React.FC = () => {
         }}
       >
         <Title variant="h1" sx={{ 
-          fontFamily: '"Stabillo", cursive',
+          fontFamily: '"Spantaran", sans-serif',
           fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' },
           color: '#fff',
           textAlign: 'center',
@@ -1161,6 +1164,11 @@ const Game: React.FC = () => {
           </ModalContent>
         </ModalOverlay>
       )}
+
+      <MatchAnimation 
+        isVisible={showMatchAnimation} 
+        onComplete={() => setShowMatchAnimation(false)} 
+      />
 
       {error && (
         <Alert severity="error" sx={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>

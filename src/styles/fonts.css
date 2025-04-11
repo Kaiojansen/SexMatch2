@@ -1,0 +1,20 @@
+@font-face {
+  font-family: 'Stabillo';
+  src: url('../components/Stabillo Medium.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Spantaran';
+  src: url('../components/Spantaran (DEMO).ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Good Timing BD';
+  src: url('../components/good timing bd.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+} 
