@@ -14,6 +14,7 @@ import {
   IconButton,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { useNavigate } from 'react-router-dom';
 
 interface CardData {
   id: string;
@@ -67,11 +68,38 @@ const Admin = () => {
     }
   };
 
+  const handleExportCards = () => {
+    const cardsJson = JSON.stringify(cards, null, 2);
+    const blob = new Blob([cardsJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cards_export.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-        Gerenciar Cards
-      </Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" component="h1">
+          Administração de Cards
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={handleExportCards}
+          sx={{
+            backgroundColor: '#ff4b6e',
+            '&:hover': {
+              backgroundColor: '#ff1f4c'
+            }
+          }}
+        >
+          Exportar Cards
+        </Button>
+      </Box>
 
       <Box component="form" onSubmit={handleAddCard} sx={{ mb: 6 }}>
         <Grid container spacing={2}>

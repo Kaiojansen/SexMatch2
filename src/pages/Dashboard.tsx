@@ -38,6 +38,8 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonIcon from '@mui/icons-material/Person';
 import EditIcon from '@mui/icons-material/Edit';
+import DescriptionIcon from '@mui/icons-material/Description';
+import SecurityIcon from '@mui/icons-material/Security';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { motion } from 'framer-motion';
@@ -118,6 +120,8 @@ const Dashboard: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [editNameDialog, setEditNameDialog] = useState(false);
   const [tempName, setTempName] = useState('');
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
+  const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -320,7 +324,7 @@ const Dashboard: React.FC = () => {
               component="h1" 
               gutterBottom
               sx={{
-                fontFamily: "'Cinzel', serif",
+                fontFamily: '"Staatliches", cursive',
                 color: '#fff',
                 textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
                 display: 'flex',
@@ -630,6 +634,19 @@ const Dashboard: React.FC = () => {
           </ListItemIcon>
           <ListItemText primary="Mudar Nome" />
         </MenuItem>
+        <Divider sx={{ bgcolor: 'rgba(255, 75, 110, 0.2)' }} />
+        <MenuItem onClick={() => { setShowTermsDialog(true); handleMenuClose(); }}>
+          <ListItemIcon>
+            <DescriptionIcon sx={{ color: '#ff4b6e' }} />
+          </ListItemIcon>
+          <ListItemText primary="Termos de Uso" />
+        </MenuItem>
+        <MenuItem onClick={() => { setShowPrivacyDialog(true); handleMenuClose(); }}>
+          <ListItemIcon>
+            <SecurityIcon sx={{ color: '#ff4b6e' }} />
+          </ListItemIcon>
+          <ListItemText primary="Política de Privacidade" />
+        </MenuItem>
       </Menu>
 
       <Dialog 
@@ -689,6 +706,195 @@ const Dashboard: React.FC = () => {
             }}
           >
             Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Termos de Uso Dialog */}
+      <Dialog 
+        open={showTermsDialog} 
+        onClose={() => setShowTermsDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'rgba(20, 20, 20, 0.95)',
+            border: '1px solid rgba(255, 75, 110, 0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 4,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'radial-gradient(circle at center, rgba(255,75,110,0.15) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: '#fff',
+          fontFamily: '"Staatliches", cursive',
+          textAlign: 'center',
+          borderBottom: '1px solid rgba(255, 75, 110, 0.2)',
+          pb: 2
+        }}>
+          Termos de Uso
+        </DialogTitle>
+        <DialogContent sx={{ color: '#fff', py: 3 }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>1. Aceitação dos Termos</Typography>
+            <Typography>
+              Ao acessar e usar o SexMatch, você concorda em cumprir e estar vinculado a estes Termos de Uso.
+            </Typography>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>2. Uso do Serviço</Typography>
+            <Typography>
+              O SexMatch é uma plataforma para adultos que promove encontros e conexões. Você concorda em:
+            </Typography>
+            <List sx={{ listStyleType: 'disc', pl: 2 }}>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Manter um comportamento respeitoso com todos os usuários</Typography>
+              </ListItem>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Não compartilhar conteúdo inapropriado ou ilegal</Typography>
+              </ListItem>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Respeitar a privacidade e consentimento dos outros usuários</Typography>
+              </ListItem>
+            </List>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>3. Responsabilidades</Typography>
+            <Typography>
+              Você é responsável por todas as atividades realizadas em sua conta e por manter a confidencialidade de suas credenciais.
+            </Typography>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>4. Modificações</Typography>
+            <Typography>
+              Reservamos o direito de modificar estes termos a qualquer momento. Alterações significativas serão notificadas aos usuários.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 75, 110, 0.2)', p: 2 }}>
+          <Button 
+            onClick={() => setShowTermsDialog(false)}
+            sx={{ 
+              color: '#ff4b6e',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 75, 110, 0.1)'
+              }
+            }}
+          >
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Política de Privacidade Dialog */}
+      <Dialog 
+        open={showPrivacyDialog} 
+        onClose={() => setShowPrivacyDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'rgba(20, 20, 20, 0.95)',
+            border: '1px solid rgba(255, 75, 110, 0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 4,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'radial-gradient(circle at center, rgba(255,75,110,0.15) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: '#fff',
+          fontFamily: '"Staatliches", cursive',
+          textAlign: 'center',
+          borderBottom: '1px solid rgba(255, 75, 110, 0.2)',
+          pb: 2
+        }}>
+          Política de Privacidade
+        </DialogTitle>
+        <DialogContent sx={{ color: '#fff', py: 3 }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>1. Coleta de Dados</Typography>
+            <Typography>
+              Coletamos apenas as informações necessárias para fornecer nossos serviços, incluindo:
+            </Typography>
+            <List sx={{ listStyleType: 'disc', pl: 2 }}>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Informações básicas de perfil</Typography>
+              </ListItem>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Preferências de uso</Typography>
+              </ListItem>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Dados de interação com outros usuários</Typography>
+              </ListItem>
+            </List>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>2. Uso dos Dados</Typography>
+            <Typography>
+              Utilizamos seus dados para:
+            </Typography>
+            <List sx={{ listStyleType: 'disc', pl: 2 }}>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Melhorar sua experiência no aplicativo</Typography>
+              </ListItem>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Facilitar conexões com outros usuários</Typography>
+              </ListItem>
+              <ListItem sx={{ display: 'list-item' }}>
+                <Typography>Garantir a segurança da plataforma</Typography>
+              </ListItem>
+            </List>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>3. Proteção de Dados</Typography>
+            <Typography>
+              Implementamos medidas de segurança rigorosas para proteger suas informações pessoais contra acesso não autorizado.
+            </Typography>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ color: '#ff4b6e', mb: 1 }}>4. Seus Direitos</Typography>
+            <Typography>
+              Você tem o direito de acessar, corrigir ou excluir seus dados pessoais a qualquer momento.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 75, 110, 0.2)', p: 2 }}>
+          <Button 
+            onClick={() => setShowPrivacyDialog(false)}
+            sx={{ 
+              color: '#ff4b6e',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 75, 110, 0.1)'
+              }
+            }}
+          >
+            Fechar
           </Button>
         </DialogActions>
       </Dialog>

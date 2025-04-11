@@ -9,6 +9,8 @@ import Login from './pages/Login';
 import PartnerRequest from './pages/PartnerRequest';
 import Game from './pages/Game';
 import Admin from './pages/Admin';
+import AdminLogin from './pages/AdminLogin';
+import AdminRoute from './components/AdminRoute';
 import './styles/fonts.css';
 
 const theme = createTheme({
@@ -129,7 +131,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/partner-request" element={<PartnerRequest />} />
-            <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} />
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route path="/game/:partnerId" element={<PrivateRoute><Game /></PrivateRoute>} />
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -31,7 +31,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "create-test-partner": "node src/scripts/createTestPartner.mjs"
+    "create-test-partner": "node src/scripts/createTestPartner.mjs",
+    "export-cards": "node src/scripts/exportCards.js"
   },
   "eslintConfig": {
     "extends": [

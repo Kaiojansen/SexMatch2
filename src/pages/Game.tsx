@@ -1114,7 +1114,6 @@ const Game: React.FC = () => {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-              fontFamily: '"Staatliches", cursive',
               fontSize: '3rem'
             }}
           >
@@ -1169,7 +1168,6 @@ const Game: React.FC = () => {
                 variant="h5" 
                 sx={{ 
                   color: '#fff',
-                  fontFamily: '"Staatliches", cursive',
                   fontSize: '2rem',
                   mb: 2,
                   textShadow: '0 2px 4px rgba(0,0,0,0.3)'
@@ -1268,7 +1266,6 @@ const Game: React.FC = () => {
                 mt: 2, 
                 color: '#fff',
                 textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                fontFamily: '"Staatliches", cursive',
                 fontSize: '2rem'
               }}>
                 {selectedMatch.cardTitle}
