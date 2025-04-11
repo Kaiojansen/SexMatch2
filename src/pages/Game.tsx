@@ -336,16 +336,18 @@ const MatchesGrid = styled(Box)({
 });
 
 const MatchCard = styled(Card)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
-  backgroundColor: 'rgba(255, 75, 110, 0.1)',
-  border: '1px solid rgba(255, 75, 110, 0.3)',
-  borderRadius: '12px',
+  position: 'relative',
+  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  borderRadius: '16px',
   overflow: 'hidden',
   transition: 'all 0.3s ease',
+  cursor: 'pointer',
   '&:hover': {
     transform: 'scale(1.02)',
-    borderColor: '#ff4b6e',
-  },
+    '& .card-overlay': {
+      opacity: 1
+    }
+  }
 }));
 
 const ModalOverlay = styled(Box)({
@@ -849,45 +851,13 @@ const Game: React.FC = () => {
                 <MatchCard 
                   key={match.cardId}
                   onClick={() => setSelectedMatch(match)}
-                  sx={{
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                    border: '2px solid #333',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    backgroundColor: '#000',
-                    position: 'relative',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      border: '2px solid #666'
-                    }
-                  }}
                 >
-                  {currentUser && hotMarkedCards[match.cardId] && (
-                    <HotCardIndicator>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        gap: '4px',
-                        alignItems: 'center',
-                        background: 'linear-gradient(45deg, #ff4b6e, #ff1f4b)',
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)',
-                        animation: 'pulse 2s infinite'
-                      }}>
-                        <LocalFireDepartmentIcon sx={{ fontSize: '1rem' }} />
-                        <Typography variant="caption" sx={{ 
-                          color: '#fff',
-                          fontWeight: 'bold',
-                          fontSize: '0.7rem',
-                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
-                        }}>
-                          HOT!
-                        </Typography>
-                      </Box>
-                    </HotCardIndicator>
-                  )}
-                  <Box sx={{ position: 'relative', paddingTop: '100%' }}>
+                  {/* Container da imagem com gradiente */}
+                  <Box sx={{ 
+                    position: 'relative',
+                    paddingTop: '100%', // Aspect ratio 1:1
+                    background: '#000'
+                  }}>
                     <img
                       src={match.cardImage}
                       alt={match.cardTitle}
@@ -897,36 +867,80 @@ const Game: React.FC = () => {
                         left: 0,
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
-                        userSelect: 'none',
-                        pointerEvents: 'none'
+                        objectFit: 'cover'
                       }}
-                      draggable={false}
                     />
+                    
+                    {/* Overlay com gradiente e título */}
                     <Box
+                      className="card-overlay"
                       sx={{
                         position: 'absolute',
-                        bottom: 0,
+                        top: 0,
                         left: 0,
                         right: 0,
-                        background: 'linear-gradient(transparent, rgba(0,0,0,0.9))',
-                        padding: '15px 8px 8px',
+                        bottom: 0,
+                        background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0.95) 100%)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'flex-end',
+                        padding: '16px',
+                        transition: 'opacity 0.3s ease',
+                        opacity: 0.8
                       }}
                     >
                       <Typography
-                        variant="subtitle2"
+                        variant="h6"
                         sx={{
-                          color: 'white',
-                          textAlign: 'center',
-                          fontSize: '0.8rem',
+                          color: '#fff',
+                          fontSize: '1.1rem',
                           fontWeight: 'bold',
-                          textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                          userSelect: 'none',
+                          textAlign: 'center',
+                          textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+                          mb: 1,
+                          fontFamily: '"Stabillo", sans-serif'
                         }}
                       >
                         {match.cardTitle}
                       </Typography>
                     </Box>
+
+                    {/* Indicador HOT */}
+                    {currentUser && hotMarkedCards[match.cardId] && (
+                      <Box 
+                        sx={{ 
+                          position: 'absolute',
+                          top: '12px',
+                          right: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: 'linear-gradient(45deg, #ff4b6e, #ff1f4b)',
+                          padding: '6px 12px',
+                          borderRadius: '20px',
+                          boxShadow: '0 2px 8px rgba(255, 75, 110, 0.5)',
+                          animation: 'pulse 2s infinite',
+                          '@keyframes pulse': {
+                            '0%': { transform: 'scale(1)', opacity: 0.8 },
+                            '50%': { transform: 'scale(1.05)', opacity: 1 },
+                            '100%': { transform: 'scale(1)', opacity: 0.8 }
+                          }
+                        }}
+                      >
+                        <LocalFireDepartmentIcon sx={{ fontSize: '1.2rem', color: '#fff' }} />
+                        <Typography 
+                          sx={{ 
+                            color: '#fff',
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                            letterSpacing: '0.5px'
+                          }}
+                        >
+                          HOT
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                 </MatchCard>
               ))}
@@ -1057,48 +1071,152 @@ const Game: React.FC = () => {
             borderRadius: 3,
             maxWidth: 400,
             width: '100%',
-            background: 'linear-gradient(135deg, rgba(20,20,20,0.95) 0%, rgba(40,0,0,0.95) 100%)',
+            background: 'linear-gradient(135deg, rgba(20,20,20,0.98) 0%, rgba(40,0,0,0.98) 100%)',
             backdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 75, 110, 0.3)',
             color: 'white',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            position: 'relative'
           }
         }}
       >
+        {/* Efeito de brilho de fundo */}
         <Box sx={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'radial-gradient(circle at center, rgba(255,75,110,0.2) 0%, transparent 70%)',
+          background: 'radial-gradient(circle at center, rgba(255,75,110,0.15) 0%, transparent 70%)',
+          animation: 'pulse 3s infinite ease-in-out',
+          '@keyframes pulse': {
+            '0%': { opacity: 0.5 },
+            '50%': { opacity: 1 },
+            '100%': { opacity: 0.5 }
+          },
           pointerEvents: 'none'
         }} />
-        <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#ff4b6e' }}>
-            É um Match! 🎉
+
+        <DialogTitle sx={{ 
+          textAlign: 'center', 
+          pt: 4,
+          pb: 2,
+          position: 'relative'
+        }}>
+          <Typography 
+            variant="h4" 
+            sx={{ 
+              fontWeight: 'bold',
+              background: 'linear-gradient(45deg, #ff4b6e, #ff8f53)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              fontFamily: '"Stabillo", sans-serif',
+              fontSize: '3rem'
+            }}
+          >
+            É um Match!
           </Typography>
         </DialogTitle>
+
         <DialogContent>
           {matchedCard && (
-            <Box sx={{ textAlign: 'center', py: 3 }}>
-              <CardImage 
-                src={matchedCard.image}
-                alt={matchedCard.title}
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 3,
+              position: 'relative'
+            }}>
+              {/* Container da imagem com efeito de borda brilhante */}
+              <Box sx={{
+                position: 'relative',
+                mb: 4,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: -2,
+                  left: -2,
+                  right: -2,
+                  bottom: -2,
+                  background: 'linear-gradient(45deg, #ff4b6e, #ff8f53)',
+                  borderRadius: '12px',
+                  zIndex: -1,
+                  animation: 'borderGlow 2s infinite ease-in-out',
+                  '@keyframes borderGlow': {
+                    '0%': { opacity: 0.5 },
+                    '50%': { opacity: 1 },
+                    '100%': { opacity: 0.5 }
+                  }
+                }
+              }}>
+                <img 
+                  src={matchedCard.image}
+                  alt={matchedCard.title}
+                  style={{ 
+                    width: '100%',
+                    height: 250,
+                    objectFit: 'cover',
+                    borderRadius: '10px',
+                    border: '2px solid rgba(255,255,255,0.1)'
+                  }}
+                />
+              </Box>
+
+              {/* Título da carta */}
+              <Typography 
+                variant="h5" 
                 sx={{ 
-                  height: 250,
-                  width: '100%',
-                  borderRadius: 2,
-                  mb: 3,
-                  border: '2px solid rgba(255,75,110,0.3)'
+                  color: '#fff',
+                  fontFamily: '"Stabillo", sans-serif',
+                  fontSize: '2rem',
+                  mb: 2,
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                 }}
-              />
-              <Typography variant="h5" gutterBottom sx={{ color: '#ff4b6e' }}>
+              >
                 {matchedCard.title}
               </Typography>
-              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                Você e seu parceiro combinaram nesta fantasia!
+
+              {/* Mensagem motivacional */}
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  color: 'rgba(255,255,255,0.9)',
+                  mb: 3,
+                  fontStyle: 'italic',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                }}
+              >
+                Vocês combinaram nesta fantasia! 
+                Que tal torná-la realidade?
               </Typography>
+
+              {/* Botão de ação */}
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setShowMatchDialog(false);
+                  setSelectedMatch({
+                    cardId: matchedCard.id,
+                    cardTitle: matchedCard.title,
+                    cardImage: matchedCard.image
+                  });
+                }}
+                sx={{
+                  background: 'linear-gradient(45deg, #ff4b6e, #ff8f53)',
+                  color: 'white',
+                  padding: '10px 30px',
+                  borderRadius: '25px',
+                  textTransform: 'none',
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 15px rgba(255,75,110,0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #ff3b5e, #ff7f43)',
+                    boxShadow: '0 6px 20px rgba(255,75,110,0.4)',
+                  }
+                }}
+              >
+                Ver Detalhes
+              </Button>
             </Box>
           )}
         </DialogContent>
