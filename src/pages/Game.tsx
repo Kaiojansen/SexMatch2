@@ -433,18 +433,40 @@ const parseTimestamp = (timestamp: string | Timestamp): Date => {
 };
 
 const HotButton = styled(Button)(({ theme }) => ({
-  backgroundColor: '#ff4b6e',
+  backgroundColor: 'rgba(255, 75, 110, 0.1)',
   color: 'white',
-  borderRadius: '20px',
-  padding: '8px 24px',
-  marginTop: '16px',
-  width: '100%',
+  borderRadius: '30px',
+  padding: '12px 24px',
+  border: '2px solid rgba(255, 75, 110, 0.3)',
+  backdropFilter: 'blur(10px)',
+  transition: 'all 0.3s ease',
+  textTransform: 'none',
+  fontSize: '0.95rem',
+  fontWeight: 600,
+  letterSpacing: '0.5px',
+  whiteSpace: 'nowrap',
+  minWidth: '180px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
   '&:hover': {
-    backgroundColor: '#ff1f4b',
+    backgroundColor: 'rgba(255, 75, 110, 0.2)',
+    borderColor: 'rgba(255, 75, 110, 0.5)',
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 12px rgba(255, 75, 110, 0.2)',
   },
   '&.marked': {
-    backgroundColor: '#ff1f4b',
+    backgroundColor: 'rgba(255, 75, 110, 0.3)',
+    borderColor: 'rgba(255, 75, 110, 0.8)',
     pointerEvents: 'none',
+  },
+  '& .MuiSvgIcon-root': {
+    fontSize: '1.3rem',
+  },
+  '@media (max-width: 600px)': {
+    fontSize: '0.9rem',
+    padding: '10px 20px',
+    minWidth: '160px',
   }
 }));
 
@@ -940,13 +962,14 @@ const Game: React.FC = () => {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%)',
-                      opacity: 0.7,
+                      background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.9) 100%)',
+                      opacity: 0.9,
                       transition: 'opacity 0.3s ease',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'flex-end',
-                      padding: '16px'
+                      padding: '16px',
+                      zIndex: 2
                     }}>
                       <Typography variant="h6" sx={{ 
                         color: '#fff',
@@ -956,6 +979,25 @@ const Game: React.FC = () => {
                       }}>
                         {match.cardTitle}
                       </Typography>
+                      {currentUser && hotMarkedCards[match.cardId] && 
+                        !userFeitos.includes(match.cardId) && 
+                        !partnerFeitos.includes(match.cardId) && (
+                        <Box sx={{ 
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          backgroundColor: 'rgba(255, 75, 110, 0.9)',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          animation: 'pulse 2s infinite',
+                          zIndex: 3
+                        }}>
+                          QUERO MUITO
+                        </Box>
+                      )}
                       {(userFeitos.includes(match.cardId) || partnerFeitos.includes(match.cardId)) && (
                         <Box sx={{ 
                           position: 'absolute',
@@ -967,7 +1009,8 @@ const Game: React.FC = () => {
                           borderRadius: '4px',
                           fontSize: '12px',
                           fontWeight: 'bold',
-                          animation: 'pulse 2s infinite'
+                          animation: 'pulse 2s infinite',
+                          zIndex: 3
                         }}>
                           JÁ FIZEMOS!
                         </Box>
@@ -1266,20 +1309,23 @@ const Game: React.FC = () => {
               overflow: 'hidden',
               position: 'relative'
             }}>
-              {currentUser && hotMarkedCards[selectedMatch.cardId] && (
+              {currentUser && hotMarkedCards[selectedMatch.cardId] && 
+                !userFeitos.includes(selectedMatch.cardId) && 
+                !partnerFeitos.includes(selectedMatch.cardId) && (
                 <Box sx={{ 
                   position: 'absolute',
                   top: '16px',
                   right: '16px',
-                  backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                  backgroundColor: 'rgba(255, 75, 110, 0.9)',
                   color: 'white',
                   padding: '4px 8px',
                   borderRadius: '4px',
                   fontSize: '12px',
                   fontWeight: 'bold',
-                  animation: 'pulse 2s infinite'
+                  animation: 'pulse 2s infinite',
+                  zIndex: 3
                 }}>
-                  HOT!
+                  QUERO MUITO
                 </Box>
               )}
               {(userFeitos.includes(selectedMatch.cardId) || partnerFeitos.includes(selectedMatch.cardId)) && (
@@ -1287,13 +1333,14 @@ const Game: React.FC = () => {
                   position: 'absolute',
                   top: '16px',
                   left: '16px',
-                  backgroundColor: 'rgba(0, 255, 0, 0.8)',
+                  backgroundColor: 'rgba(76, 175, 80, 0.9)',
                   color: 'white',
                   padding: '4px 8px',
                   borderRadius: '4px',
                   fontSize: '12px',
                   fontWeight: 'bold',
-                  animation: 'pulse 2s infinite'
+                  animation: 'pulse 2s infinite',
+                  zIndex: 3
                 }}>
                   JÁ FIZEMOS!
                 </Box>
@@ -1311,19 +1358,40 @@ const Game: React.FC = () => {
                 mt: 2, 
                 color: '#fff',
                 textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                fontSize: '2rem'
+                fontSize: {xs: '1.5rem', sm: '2rem'},
+                px: 2
               }}>
                 {selectedMatch.cardTitle}
               </Typography>
               
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: {xs: 'column', sm: 'row'},
+                justifyContent: 'center', 
+                alignItems: 'center',
+                gap: 2, 
+                mt: 2, 
+                mb: 3,
+                px: 3
+              }}>
                 <HotButton
                   onClick={() => handleMarkAsHot(selectedMatch)}
                   startIcon={<LocalFireDepartmentIcon />}
                   className={userFires.includes(selectedMatch.cardId) ? 'marked' : ''}
-                  disabled={userFires.includes(selectedMatch.cardId)}
+                  disabled={userFires.includes(selectedMatch.cardId) || userFeitos.includes(selectedMatch.cardId)}
+                  sx={{
+                    opacity: userFeitos.includes(selectedMatch.cardId) ? 0.7 : 1,
+                    flex: {xs: '1', sm: '0 1 auto'},
+                    backgroundColor: 'rgba(255, 75, 110, 0.1)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 75, 110, 0.2)',
+                    },
+                    '&.marked': {
+                      backgroundColor: 'rgba(255, 75, 110, 0.3)',
+                    }
+                  }}
                 >
-                  {userFires.includes(selectedMatch.cardId) ? 'MUITO QUENTE! 🔥' : 'QUERO MUITO! 🔥'}
+                  {userFires.includes(selectedMatch.cardId) ? 'MUITO QUENTE' : 'QUERO MUITO'}
                 </HotButton>
 
                 <HotButton
@@ -1332,13 +1400,21 @@ const Game: React.FC = () => {
                   className={userFeitos.includes(selectedMatch.cardId) ? 'marked' : ''}
                   disabled={userFeitos.includes(selectedMatch.cardId)}
                   sx={{
-                    background: 'linear-gradient(45deg, #4CAF50, #45a049)',
+                    flex: {xs: '1', sm: '0 1 auto'},
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    borderColor: 'rgba(76, 175, 80, 0.3)',
                     '&:hover': {
-                      background: 'linear-gradient(45deg, #45a049, #3d8b40)',
+                      backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                      borderColor: 'rgba(76, 175, 80, 0.5)',
+                      boxShadow: '0 4px 12px rgba(76, 175, 80, 0.2)',
+                    },
+                    '&.marked': {
+                      backgroundColor: 'rgba(76, 175, 80, 0.3)',
+                      borderColor: 'rgba(76, 175, 80, 0.8)',
                     }
                   }}
                 >
-                  {userFeitos.includes(selectedMatch.cardId) ? 'JÁ FIZEMOS! ✅' : 'JÁ FIZEMOS ✅'}
+                  {userFeitos.includes(selectedMatch.cardId) ? 'JÁ FIZEMOS' : 'JÁ FIZEMOS'}
                 </HotButton>
               </Box>
             </Box>
