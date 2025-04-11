@@ -820,9 +820,13 @@ const Game: React.FC = () => {
     }
   };
 
+  const handleMatchesClick = () => {
+    navigate('/matches');
+  };
+
   return (
     <GameContainer>
-      <MatchesButton onClick={handleToggleMatches}>
+      <MatchesButton onClick={handleMatchesClick}>
         <Badge badgeContent={newMatchCount} color="error" sx={{ 
           '& .MuiBadge-badge': { 
             fontSize: '0.7rem',
