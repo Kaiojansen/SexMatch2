@@ -137,28 +137,25 @@ const MatchDialog: React.FC<MatchDialogProps> = ({ open, onClose, match, current
             </Box>
           </Box>
           
-          <Box sx={{ 
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            mt: 2
-          }}>
-            <IconButton 
-              onClick={handleMarkAsDone}
-              disabled={isLoading}
-              sx={{
-                color: isDone ? '#4caf50' : 'inherit',
-                '&:hover': {
-                  color: '#4caf50'
-                }
-              }}
-            >
-              {isDone ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />}
-            </IconButton>
-            <Typography>
-              {isDone ? 'Marcado como feito' : 'Marcar como feito'}
-            </Typography>
-          </Box>
+          <Button
+            onClick={handleMarkAsDone}
+            disabled={isLoading}
+            fullWidth
+            variant="contained"
+            startIcon={isDone ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />}
+            sx={{
+              mt: 2,
+              backgroundColor: isDone ? '#4caf50' : '#ff4081',
+              color: 'white',
+              fontFamily: 'Staatliches, cursive',
+              fontSize: '1.2rem',
+              '&:hover': {
+                backgroundColor: isDone ? '#45a049' : '#f50057'
+              }
+            }}
+          >
+            {isDone ? 'FEITO! ✓' : 'MARCAR COMO FEITO! 🔥'}
+          </Button>
         </Box>
       </DialogContent>
       <DialogActions>
