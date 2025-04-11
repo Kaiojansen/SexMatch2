@@ -3,6 +3,7 @@ import { Card, CardMedia, CardContent, Typography, Box, Chip } from '@mui/materi
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MatchCardProps {
   match: any;
@@ -11,20 +12,18 @@ interface MatchCardProps {
 
 const MatchCard: React.FC<MatchCardProps> = ({ match, onClick }) => {
   const [isDone, setIsDone] = useState(false);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
-    if (!match?.id) return;
+    if (!match?.id || !currentUser?.uid) return;
 
-    const matchRef = doc(db, 'matches', match.id);
-    const unsubscribe = onSnapshot(matchRef, (doc) => {
-      if (doc.exists()) {
-        const matchData = doc.data();
-        setIsDone(matchData.done || false);
-      }
+    const doneRef = doc(db, 'partners', 'done', match.id, currentUser.uid);
+    const unsubscribe = onSnapshot(doneRef, (doc) => {
+      setIsDone(doc.exists());
     });
 
     return () => unsubscribe();
-  }, [match?.id]);
+  }, [match?.id, currentUser?.uid]);
 
   return (
     <Card 

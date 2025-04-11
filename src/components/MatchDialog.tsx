@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, Chip, IconButton } from '@mui/material';
 import { db } from '../firebase';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
@@ -17,29 +17,30 @@ const MatchDialog: React.FC<MatchDialogProps> = ({ open, onClose, match, current
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!match?.id) return;
+    if (!match?.id || !currentUser?.uid) return;
 
-    const matchRef = doc(db, 'matches', match.id);
-    const unsubscribe = onSnapshot(matchRef, (doc) => {
-      if (doc.exists()) {
-        const matchData = doc.data();
-        setIsDone(matchData.done || false);
-      }
+    const doneRef = doc(db, 'partners', 'done', match.id, currentUser.uid);
+    const unsubscribe = onSnapshot(doneRef, (doc) => {
+      setIsDone(doc.exists());
     });
 
     return () => unsubscribe();
-  }, [match?.id]);
+  }, [match?.id, currentUser?.uid]);
 
   const handleMarkAsDone = async () => {
-    if (!match?.id) return;
+    if (!match?.id || !currentUser?.uid) return;
     setIsLoading(true);
     try {
-      const matchRef = doc(db, 'matches', match.id);
-      await updateDoc(matchRef, {
-        done: !isDone,
-        doneBy: !isDone ? currentUser.uid : null,
-        doneAt: !isDone ? new Date().toISOString() : null
-      });
+      const doneRef = doc(db, 'partners', 'done', match.id, currentUser.uid);
+      if (isDone) {
+        await deleteDoc(doneRef);
+      } else {
+        await setDoc(doneRef, {
+          timestamp: new Date().toISOString(),
+          userId: currentUser.uid,
+          matchId: match.id
+        });
+      }
     } catch (error) {
       console.error('Error marking match as done:', error);
     } finally {
