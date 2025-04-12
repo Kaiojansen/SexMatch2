@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 
 interface CardData {
@@ -45,6 +46,7 @@ const Admin = () => {
   const [selectedSuggestion, setSelectedSuggestion] = useState<any>(null);
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [previewCard, setPreviewCard] = useState<CardData | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -373,6 +375,17 @@ const Admin = () => {
                   <EditIcon />
                 </IconButton>
                 <IconButton
+                  onClick={() => setPreviewCard(card)}
+                  sx={{
+                    color: '#ff4b6e',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 75, 110, 0.1)'
+                    }
+                  }}
+                >
+                  <VisibilityIcon />
+                </IconButton>
+                <IconButton
                   onClick={() => handleDeleteCard(card.id)}
                   sx={{
                     color: '#ff4b6e',
@@ -588,6 +601,113 @@ const Admin = () => {
             color="primary"
           >
             Aprovar e Adicionar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!previewCard}
+        onClose={() => setPreviewCard(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'rgba(20, 20, 20, 0.95)',
+            border: '1px solid rgba(255, 75, 110, 0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 4,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'radial-gradient(circle at center, rgba(255,75,110,0.15) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: '#fff',
+          fontFamily: '"Staatliches", cursive',
+          textAlign: 'center',
+          borderBottom: '1px solid rgba(255, 75, 110, 0.2)',
+          pb: 2
+        }}>
+          Visualização da Carta
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          {previewCard && (
+            <Box sx={{ 
+              textAlign: 'center',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: -2,
+                left: -2,
+                right: -2,
+                bottom: -2,
+                background: 'linear-gradient(45deg, #ff4b6e, #ff8f53)',
+                borderRadius: '12px',
+                zIndex: -1,
+                animation: 'borderGlow 2s infinite ease-in-out',
+                '@keyframes borderGlow': {
+                  '0%': { opacity: 0.5 },
+                  '50%': { opacity: 1 },
+                  '100%': { opacity: 0.5 }
+                }
+              }
+            }}>
+              <img 
+                src={previewCard.image}
+                alt={previewCard.title}
+                style={{ 
+                  width: '100%',
+                  height: 250,
+                  objectFit: 'cover',
+                  borderRadius: '10px',
+                  border: '2px solid rgba(255,255,255,0.1)'
+                }}
+              />
+              <Typography 
+                variant="h5" 
+                sx={{ 
+                  color: '#fff',
+                  fontSize: '2rem',
+                  mt: 2,
+                  mb: 1,
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                }}
+              >
+                {previewCard.title}
+              </Typography>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  color: 'rgba(255,255,255,0.9)',
+                  fontStyle: 'italic',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                }}
+              >
+                {previewCard.description}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 75, 110, 0.2)', p: 2 }}>
+          <Button 
+            onClick={() => setPreviewCard(null)}
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 75, 110, 0.1)'
+              }
+            }}
+          >
+            Fechar
           </Button>
         </DialogActions>
       </Dialog>
