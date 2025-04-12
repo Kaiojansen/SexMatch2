@@ -601,8 +601,12 @@ const Game: React.FC = () => {
           ...doc.data()
         })) as CardData[];
 
-        // Embaralhar as cartas
-        const shuffledCards = fetchedCards.sort(() => Math.random() - 0.5);
+        // Filtrar cartas que já deram match
+        const matchedCardIds = matches.map(match => match.cardId);
+        const availableCards = fetchedCards.filter(card => !matchedCardIds.includes(card.id));
+
+        // Embaralhar as cartas disponíveis
+        const shuffledCards = availableCards.sort(() => Math.random() - 0.5);
         setCards(shuffledCards);
       } catch (error) {
         console.error('Error fetching cards:', error);
@@ -613,7 +617,7 @@ const Game: React.FC = () => {
     };
 
     fetchCards();
-  }, []);
+  }, [matches]);
 
   useEffect(() => {
     if (!currentUser || !partnerId) return;
