@@ -44,6 +44,7 @@ const Admin = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<any>(null);
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
