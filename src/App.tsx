@@ -11,7 +11,6 @@ import Game from './pages/Game';
 import Admin from './pages/Admin';
 import AdminLogin from './pages/AdminLogin';
 import AdminRoute from './components/AdminRoute';
-import Matches from './pages/Matches';
 import './styles/fonts.css';
 
 const theme = createTheme({
@@ -136,7 +135,6 @@ function App() {
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route path="/game/:partnerId" element={<PrivateRoute><Game /></PrivateRoute>} />
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/matches" element={<PrivateRoute><Matches /></PrivateRoute>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>

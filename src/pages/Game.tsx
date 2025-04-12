@@ -17,7 +17,8 @@ import {
   writeBatch,
   serverTimestamp,
   Timestamp,
-  increment
+  increment,
+  addDoc
 } from 'firebase/firestore';
 import {
   Box,
@@ -35,6 +36,8 @@ import {
   Collapse,
   Alert,
   Paper,
+  TextField,
+  DialogActions
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -507,6 +510,9 @@ const Game: React.FC = () => {
   const [showMatchAnimation, setShowMatchAnimation] = useState(false);
   const [userFeitos, setUserFeitos] = useState<string[]>([]);
   const [partnerFeitos, setPartnerFeitos] = useState<string[]>([]);
+  const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
+  const [suggestionTitle, setSuggestionTitle] = useState('');
+  const [suggestionDescription, setSuggestionDescription] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -906,6 +912,26 @@ const Game: React.FC = () => {
     }
   };
 
+  const handleSubmitSuggestion = async () => {
+    try {
+      const suggestionsRef = collection(db, 'suggestions');
+      await addDoc(suggestionsRef, {
+        title: suggestionTitle,
+        description: suggestionDescription,
+        status: 'pending',
+        createdAt: new Date()
+      });
+
+      setShowSuggestionDialog(false);
+      setSuggestionTitle('');
+      setSuggestionDescription('');
+      alert('Sugestão enviada com sucesso! Obrigado por contribuir!');
+    } catch (error) {
+      console.error('Erro ao enviar sugestão:', error);
+      alert('Erro ao enviar sugestão. Por favor, tente novamente.');
+    }
+  };
+
   return (
     <GameContainer>
       <MatchesButton onClick={handleToggleMatches}>
@@ -1114,9 +1140,16 @@ const Game: React.FC = () => {
                 <Typography variant="h5" gutterBottom>
                   Todas as cartas foram visualizadas!
                 </Typography>
-                <Typography variant="body1">
-                  Volte mais tarde para novas cartas.
+                <Typography variant="body1" sx={{ mb: 3 }}>
+                  Aguarde novas cartas ou sugira suas próprias ideias!
                 </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setShowSuggestionDialog(true)}
+                >
+                  Sugerir Cartas
+                </Button>
               </Box>
             )}
           </AnimatePresence>
@@ -1426,6 +1459,112 @@ const Game: React.FC = () => {
         isVisible={showMatchAnimation} 
         onComplete={() => setShowMatchAnimation(false)} 
       />
+
+      {/* Dialog para sugestão de cartas */}
+      <Dialog
+        open={showSuggestionDialog}
+        onClose={() => setShowSuggestionDialog(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            maxWidth: 400,
+            width: '100%',
+            background: 'linear-gradient(135deg, rgba(20,20,20,0.98) 0%, rgba(40,0,0,0.98) 100%)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 75, 110, 0.3)',
+            color: 'white',
+            overflow: 'hidden',
+            position: 'relative'
+          }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', pt: 4, pb: 2 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Sugerir Nova Carta
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Título da Carta"
+              value={suggestionTitle}
+              onChange={(e) => setSuggestionTitle(e.target.value)}
+              sx={{ mb: 2 }}
+              InputProps={{
+                sx: {
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 75, 110, 0.5)',
+                  },
+                }
+              }}
+              InputLabelProps={{
+                sx: { color: 'rgba(255, 255, 255, 0.7)' }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Descrição"
+              multiline
+              rows={4}
+              value={suggestionDescription}
+              onChange={(e) => setSuggestionDescription(e.target.value)}
+              sx={{ mb: 2 }}
+              InputProps={{
+                sx: {
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 75, 110, 0.5)',
+                  },
+                }
+              }}
+              InputLabelProps={{
+                sx: { color: 'rgba(255, 255, 255, 0.7)' }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, justifyContent: 'center' }}>
+          <Button
+            onClick={() => setShowSuggestionDialog(false)}
+            sx={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': {
+                color: 'white',
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmitSuggestion}
+            disabled={!suggestionTitle.trim() || !suggestionDescription.trim()}
+            sx={{
+              background: 'linear-gradient(45deg, #ff4b6e, #ff8f53)',
+              color: 'white',
+              padding: '8px 24px',
+              borderRadius: '20px',
+              textTransform: 'none',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #ff3b5e, #ff7f43)',
+              },
+              '&.Mui-disabled': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.3)',
+              }
+            }}
+          >
+            Enviar Sugestão
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {error && (
         <Alert severity="error" sx={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>

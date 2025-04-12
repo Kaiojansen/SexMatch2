@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import {
   Box,
   Container,
@@ -40,10 +40,15 @@ const Admin = () => {
   });
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<any>(null);
+  const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchCards();
+    fetchSuggestions();
   }, []);
 
   const fetchCards = async () => {
@@ -54,6 +59,21 @@ const Admin = () => {
       cardsData.push({ id: doc.id, ...doc.data() } as CardData);
     });
     setCards(cardsData);
+  };
+
+  const fetchSuggestions = async () => {
+    try {
+      const suggestionsRef = collection(db, 'suggestions');
+      const q = query(suggestionsRef, where('status', '==', 'pending'));
+      const querySnapshot = await getDocs(q);
+      const fetchedSuggestions = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setSuggestions(fetchedSuggestions);
+    } catch (error) {
+      console.error('Erro ao buscar sugestões:', error);
+    }
   };
 
   const handleAddCard = async (e: React.FormEvent) => {
@@ -115,6 +135,47 @@ const Admin = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleApproveSuggestion = async (suggestion: any) => {
+    try {
+      // Adicionar a carta ao banco de dados
+      const cardsRef = collection(db, 'cards');
+      await addDoc(cardsRef, {
+        title: suggestion.title,
+        description: suggestion.description,
+        category: 'sugestão',
+        image: 'https://source.unsplash.com/400x600/?sex,romance' // Imagem padrão
+      });
+
+      // Atualizar o status da sugestão
+      const suggestionRef = doc(db, 'suggestions', suggestion.id);
+      await updateDoc(suggestionRef, {
+        status: 'approved'
+      });
+
+      // Atualizar a lista de sugestões
+      setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+      setShowSuggestionDialog(false);
+      setSelectedSuggestion(null);
+    } catch (error) {
+      console.error('Erro ao aprovar sugestão:', error);
+    }
+  };
+
+  const handleRejectSuggestion = async (suggestion: any) => {
+    try {
+      const suggestionRef = doc(db, 'suggestions', suggestion.id);
+      await updateDoc(suggestionRef, {
+        status: 'rejected'
+      });
+
+      setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+      setShowSuggestionDialog(false);
+      setSelectedSuggestion(null);
+    } catch (error) {
+      console.error('Erro ao rejeitar sugestão:', error);
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -135,62 +196,110 @@ const Admin = () => {
         </Button>
       </Box>
 
-      <Box component="form" onSubmit={handleAddCard} sx={{ mb: 6 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Título"
-              value={newCard.title}
-              onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Categoria"
-              value={newCard.category}
-              onChange={(e) => setNewCard({ ...newCard, category: e.target.value })}
-              required
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Descrição"
-              value={newCard.description}
-              onChange={(e) => setNewCard({ ...newCard, description: e.target.value })}
-              multiline
-              rows={2}
-              required
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="URL da Imagem"
-              value={newCard.image}
-              onChange={(e) => setNewCard({ ...newCard, image: e.target.value })}
-              required
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <Button 
-              type="submit" 
-              variant="contained"
-              sx={{
-                backgroundColor: '#ff4b6e',
-                '&:hover': {
-                  backgroundColor: '#ff1f4c'
-                }
-              }}
-            >
-              Adicionar Card
-            </Button>
-          </Grid>
-        </Grid>
+      <Box sx={{ mb: 3 }}>
+        <Button
+          variant="contained"
+          onClick={() => setShowSuggestions(!showSuggestions)}
+          sx={{ mr: 2 }}
+        >
+          {showSuggestions ? 'Ver Cartas' : 'Ver Sugestões'}
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setShowAddDialog(true)}
+        >
+          Adicionar Nova Carta
+        </Button>
       </Box>
+
+      {showSuggestions ? (
+        <Grid container spacing={2}>
+          {suggestions.map((suggestion) => (
+            <Grid item xs={12} sm={6} md={4} key={suggestion.id}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    {suggestion.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    {suggestion.description}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => {
+                        setSelectedSuggestion(suggestion);
+                        setShowSuggestionDialog(true);
+                      }}
+                    >
+                      Ver Detalhes
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Box component="form" onSubmit={handleAddCard} sx={{ mb: 6 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Título"
+                value={newCard.title}
+                onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Categoria"
+                value={newCard.category}
+                onChange={(e) => setNewCard({ ...newCard, category: e.target.value })}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Descrição"
+                value={newCard.description}
+                onChange={(e) => setNewCard({ ...newCard, description: e.target.value })}
+                multiline
+                rows={2}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="URL da Imagem"
+                value={newCard.image}
+                onChange={(e) => setNewCard({ ...newCard, image: e.target.value })}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Button 
+                type="submit" 
+                variant="contained"
+                sx={{
+                  backgroundColor: '#ff4b6e',
+                  '&:hover': {
+                    backgroundColor: '#ff1f4c'
+                  }
+                }}
+              >
+                Adicionar Card
+              </Button>
+            </Grid>
+          </Grid>
+        </Box>
+      )}
 
       <Grid container spacing={3}>
         {cards.map((card) => (
@@ -427,6 +536,57 @@ const Admin = () => {
             }}
           >
             Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={showSuggestionDialog}
+        onClose={() => setShowSuggestionDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Detalhes da Sugestão
+        </DialogTitle>
+        <DialogContent>
+          {selectedSuggestion && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                {selectedSuggestion.title}
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                {selectedSuggestion.description}
+              </Typography>
+              <TextField
+                fullWidth
+                label="URL da Imagem"
+                value={selectedSuggestion.image || ''}
+                onChange={(e) => setSelectedSuggestion({
+                  ...selectedSuggestion,
+                  image: e.target.value
+                })}
+                sx={{ mb: 2 }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSuggestionDialog(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => handleRejectSuggestion(selectedSuggestion)}
+            color="error"
+          >
+            Rejeitar
+          </Button>
+          <Button
+            onClick={() => handleApproveSuggestion(selectedSuggestion)}
+            variant="contained"
+            color="primary"
+          >
+            Aprovar e Adicionar
           </Button>
         </DialogActions>
       </Dialog>
