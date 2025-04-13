@@ -313,8 +313,9 @@ const MatchesButton = styled(IconButton)(({ theme }) => ({
 
 const MatchesPanel = styled(Paper)(({ theme }) => ({
   position: 'relative',
-  width: 280,
-  maxHeight: '80vh',
+  width: '100%',
+  maxWidth: 400,
+  maxHeight: '90vh',
   backgroundColor: 'rgba(0, 0, 0, 0.9)',
   borderRadius: theme.spacing(2),
   padding: theme.spacing(2),
@@ -328,12 +329,12 @@ const MatchesPanel = styled(Paper)(({ theme }) => ({
 const MatchesGrid = styled(Box)({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: '12px',
-  padding: '8px 4px',
-  maxHeight: '400px', // Altura máxima para 4 cartas (2x2)
+  gap: '16px',
+  padding: '16px',
   overflowY: 'auto',
+  maxHeight: 'calc(90vh - 100px)',
   '&::-webkit-scrollbar': {
-    width: '4px',
+    width: '8px',
   },
   '&::-webkit-scrollbar-track': {
     background: 'rgba(255, 255, 255, 0.1)',
@@ -346,7 +347,6 @@ const MatchesGrid = styled(Box)({
       background: 'rgba(255, 255, 255, 0.4)',
     },
   },
-  // Esconde a scrollbar no Firefox
   scrollbarWidth: 'thin',
   scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1)'
 });
