@@ -687,12 +687,17 @@ const Game: React.FC = () => {
 
   const handleDrag = (event: any, info: any) => {
     if (isProcessingAction) return;
-    setTranslateX(info.offset.x);
-    setRotate(info.offset.x * 0.1);
     
-    if (info.offset.x > 50) {
+    // Limita o movimento horizontal
+    const maxDrag = window.innerWidth * 0.8;
+    const boundedTranslateX = Math.max(Math.min(info.offset.x, maxDrag), -maxDrag);
+    
+    setTranslateX(boundedTranslateX);
+    setRotate(boundedTranslateX * 0.08); // Reduzido para mais controle
+    
+    if (boundedTranslateX > 50) {
       setSwipeDirection('right');
-    } else if (info.offset.x < -50) {
+    } else if (boundedTranslateX < -50) {
       setSwipeDirection('left');
     } else {
       setSwipeDirection(null);
@@ -702,18 +707,24 @@ const Game: React.FC = () => {
   const handleDragEnd = async (event: any, info: any) => {
     if (isProcessingAction) return;
     
-    const swipeThreshold = 100;
+    const swipeThreshold = window.innerWidth * 0.3; // Threshold adaptativo
+    const velocity = Math.abs(info.velocity.x);
+    const isFlick = velocity > 200; // Detecta movimento rápido
+    
     setIsProcessingAction(true);
     
-    if (info.offset.x > swipeThreshold) {
-      setTranslateX(window.innerWidth * 1.5);
-      setRotate(45);
+    if (info.offset.x > swipeThreshold || (isFlick && info.offset.x > 0)) {
+      const exitX = window.innerWidth;
+      setTranslateX(exitX);
+      setRotate(30); // Reduzido para mais controle
       await handleLike();
-    } else if (info.offset.x < -swipeThreshold) {
-      setTranslateX(-window.innerWidth * 1.5);
-      setRotate(-45);
+    } else if (info.offset.x < -swipeThreshold || (isFlick && info.offset.x < 0)) {
+      const exitX = -window.innerWidth;
+      setTranslateX(exitX);
+      setRotate(-30); // Reduzido para mais controle
       handleDislike();
     } else {
+      // Retorna ao centro com animação suave
       setTranslateX(0);
       setRotate(0);
     }
@@ -1101,18 +1112,21 @@ const Game: React.FC = () => {
                 className="card"
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.7} // Adiciona mais resistência ao drag
+                dragMomentum={false} // Remove momentum para mais controle
                 onDrag={handleDrag}
                 onDragEnd={handleDragEnd}
                 animate={{
                   x: translateX,
                   rotate: rotate,
                   scale: swipeDirection ? 0.95 : 1,
-                  opacity: Math.abs(translateX) > window.innerWidth ? 0 : 1,
+                  opacity: Math.abs(translateX) > (window.innerWidth * 0.8) ? 0 : 1,
                   transition: { 
                     type: "spring", 
-                    stiffness: 150, 
-                    damping: 15,
-                    mass: 0.5
+                    stiffness: 200,  // Aumentado para mais controle
+                    damping: 20,     // Aumentado para menos oscilação
+                    mass: 0.8,       // Aumentado para movimento mais controlado
+                    velocity: 0.5    // Reduzido para mais suavidade
                   }
                 }}
                 initial={{ scale: 1, x: 0, rotate: 0 }}
@@ -1120,7 +1134,13 @@ const Game: React.FC = () => {
                   x: translateX,
                   rotate: rotate,
                   opacity: 0,
-                  transition: { duration: 0.2 }
+                  transition: { 
+                    duration: 0.2,
+                    ease: "easeOut"
+                  }
+                }}
+                style={{
+                  touchAction: "none" // Previne comportamentos padrão de touch
                 }}
               >
                 <img 
