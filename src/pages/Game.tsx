@@ -686,7 +686,7 @@ const Game: React.FC = () => {
   }, [currentUser]);
 
   const handleDrag = (event: any, info: any) => {
-    if (isProcessingAction) return; // Previne ações durante o processamento
+    if (isProcessingAction) return;
     setTranslateX(info.offset.x);
     setRotate(info.offset.x * 0.1);
     
@@ -700,25 +700,31 @@ const Game: React.FC = () => {
   };
 
   const handleDragEnd = async (event: any, info: any) => {
-    if (isProcessingAction) return; // Previne ações durante o processamento
+    if (isProcessingAction) return;
     
     const swipeThreshold = 100;
-    setIsProcessingAction(true); // Inicia o processamento
+    setIsProcessingAction(true);
     
     if (info.offset.x > swipeThreshold) {
+      setTranslateX(window.innerWidth * 1.5);
+      setRotate(45);
       await handleLike();
     } else if (info.offset.x < -swipeThreshold) {
+      setTranslateX(-window.innerWidth * 1.5);
+      setRotate(-45);
       handleDislike();
+    } else {
+      setTranslateX(0);
+      setRotate(0);
     }
     
-    setTranslateX(0);
-    setRotate(0);
     setSwipeDirection(null);
     
-    // Adiciona um pequeno delay antes de permitir a próxima ação
     setTimeout(() => {
+      setTranslateX(0);
+      setRotate(0);
       setIsProcessingAction(false);
-    }, 500);
+    }, 300);
   };
 
   const handleLike = async () => {
@@ -1100,8 +1106,21 @@ const Game: React.FC = () => {
                 animate={{
                   x: translateX,
                   rotate: rotate,
-                  scale: swipeDirection ? 0.98 : 1,
-                  transition: { type: "spring", stiffness: 200, damping: 20 }
+                  scale: swipeDirection ? 0.95 : 1,
+                  opacity: Math.abs(translateX) > window.innerWidth ? 0 : 1,
+                  transition: { 
+                    type: "spring", 
+                    stiffness: 150, 
+                    damping: 15,
+                    mass: 0.5
+                  }
+                }}
+                initial={{ scale: 1, x: 0, rotate: 0 }}
+                exit={{
+                  x: translateX,
+                  rotate: rotate,
+                  opacity: 0,
+                  transition: { duration: 0.2 }
                 }}
               >
                 <img 
