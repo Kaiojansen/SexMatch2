@@ -1272,30 +1272,18 @@ const Game: React.FC = () => {
                 }}
               >
                 <Typography variant="h5" gutterBottom>
-                  {timeUntilNewCards !== null ? (
-                    <>
-                      Todas as cartas foram visualizadas!
-                      <br />
-                      Novas cartas disponíveis em: {formatTimeRemaining(timeUntilNewCards)}
-                    </>
-                  ) : (
-                    'Todas as cartas foram visualizadas!'
-                  )}
+                  As cartas acabaram!
                 </Typography>
                 <Typography variant="body1" sx={{ mb: 3 }}>
-                  {timeUntilNewCards !== null
-                    ? 'Volte mais tarde para ver novas cartas!'
-                    : 'Aguarde novas cartas ou sugira suas próprias ideias!'}
+                  Volte daqui a algumas horas para novas cartas
                 </Typography>
-                {timeUntilNewCards === null && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => setShowSuggestionDialog(true)}
-                  >
-                    Sugerir Cartas
-                  </Button>
-                )}
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setShowSuggestionDialog(true)}
+                >
+                  Sugerir Cartas
+                </Button>
               </Box>
             )}
           </AnimatePresence>
