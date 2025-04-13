@@ -490,7 +490,7 @@ const Title = styled(Typography)({
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const { partnerId: urlPartnerId } = useParams(); // Pegando o ID do parceiro da URL
+  const { partnerId: urlPartnerId } = useParams();
   const [cards, setCards] = useState<CardData[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [translateX, setTranslateX] = useState(0);
@@ -513,6 +513,7 @@ const Game: React.FC = () => {
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const [suggestionTitle, setSuggestionTitle] = useState('');
   const [suggestionDescription, setSuggestionDescription] = useState('');
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -601,12 +602,8 @@ const Game: React.FC = () => {
           ...doc.data()
         })) as CardData[];
 
-        // Filtrar cartas que já deram match
-        const matchedCardIds = matches.map(match => match.cardId);
-        const availableCards = fetchedCards.filter(card => !matchedCardIds.includes(card.id));
-
         // Embaralhar as cartas disponíveis
-        const shuffledCards = availableCards.sort(() => Math.random() - 0.5);
+        const shuffledCards = fetchedCards.sort(() => Math.random() - 0.5);
         setCards(shuffledCards);
       } catch (error) {
         console.error('Error fetching cards:', error);
@@ -617,7 +614,7 @@ const Game: React.FC = () => {
     };
 
     fetchCards();
-  }, [matches]);
+  }, []);
 
   useEffect(() => {
     if (!currentUser || !partnerId) return;
@@ -689,6 +686,7 @@ const Game: React.FC = () => {
   }, [currentUser]);
 
   const handleDrag = (event: any, info: any) => {
+    if (isProcessingAction) return; // Previne ações durante o processamento
     setTranslateX(info.offset.x);
     setRotate(info.offset.x * 0.1);
     
@@ -702,7 +700,10 @@ const Game: React.FC = () => {
   };
 
   const handleDragEnd = async (event: any, info: any) => {
+    if (isProcessingAction) return; // Previne ações durante o processamento
+    
     const swipeThreshold = 100;
+    setIsProcessingAction(true); // Inicia o processamento
     
     if (info.offset.x > swipeThreshold) {
       await handleLike();
@@ -713,6 +714,11 @@ const Game: React.FC = () => {
     setTranslateX(0);
     setRotate(0);
     setSwipeDirection(null);
+    
+    // Adiciona um pequeno delay antes de permitir a próxima ação
+    setTimeout(() => {
+      setIsProcessingAction(false);
+    }, 500);
   };
 
   const handleLike = async () => {
