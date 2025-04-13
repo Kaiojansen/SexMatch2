@@ -517,22 +517,15 @@ const Game: React.FC = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!currentUser || !urlPartnerId) {
-        console.log('Usuário ou ID do parceiro não encontrado');
-        setError('Dados inválidos');
-        navigate('/dashboard');
-        return;
-      }
+      if (!currentUser) return;
 
       try {
-        const userDoc = doc(db, 'users', currentUser.uid);
-        const userSnap = await getDoc(userDoc);
-
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          const userPartners = userData.partners || [];
-
-          if (userPartners.includes(urlPartnerId)) {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const partners = userData.partners || [];
+          
+          if (urlPartnerId && partners.includes(urlPartnerId)) {
             setPartnerId(urlPartnerId);
             const partnershipId = [currentUser.uid, urlPartnerId].sort().join('_');
             const partnershipRef = doc(db, 'partners', partnershipId);
@@ -589,12 +582,14 @@ const Game: React.FC = () => {
     fetchUserData();
   }, [currentUser, urlPartnerId, navigate]);
 
+  // Buscar cartas do Firestore
   useEffect(() => {
     const fetchCards = async () => {
+      if (!currentUser || !partnerId) return;
+
       try {
-        setIsLoading(true);
         const cardsRef = collection(db, 'cards');
-        const q = query(cardsRef);
+        const q = query(cardsRef, where('status', '==', 'active'));
         const querySnapshot = await getDocs(q);
         
         const fetchedCards = querySnapshot.docs.map(doc => ({
@@ -602,19 +597,30 @@ const Game: React.FC = () => {
           ...doc.data()
         })) as CardData[];
 
-        // Embaralhar as cartas disponíveis
-        const shuffledCards = fetchedCards.sort(() => Math.random() - 0.5);
-        setCards(shuffledCards);
+        // Filtrar cartas que já deram match
+        const partnershipId = [currentUser.uid, partnerId].sort().join('_');
+        const partnershipRef = doc(db, 'partners', partnershipId);
+        const partnershipDoc = await getDoc(partnershipRef);
+        
+        if (partnershipDoc.exists()) {
+          const data = partnershipDoc.data() as PartnershipData;
+          const matchedCardIds = data.matches?.map(match => match.cardId) || [];
+          const filteredCards = fetchedCards.filter(card => !matchedCardIds.includes(card.id));
+          setCards(filteredCards);
+        } else {
+          setCards(fetchedCards);
+        }
+
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching cards:', error);
-        setError('Erro ao carregar as cartas. Tente novamente.');
-      } finally {
+        console.error('Erro ao buscar cartas:', error);
+        setError('Erro ao carregar as cartas');
         setIsLoading(false);
       }
     };
 
     fetchCards();
-  }, []);
+  }, [currentUser, partnerId]);
 
   useEffect(() => {
     if (!currentUser || !partnerId) return;
