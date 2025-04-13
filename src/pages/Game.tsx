@@ -514,6 +514,58 @@ const Game: React.FC = () => {
   const [suggestionTitle, setSuggestionTitle] = useState('');
   const [suggestionDescription, setSuggestionDescription] = useState('');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [timeUntilNewCards, setTimeUntilNewCards] = useState<number | null>(null);
+  const [settings, setSettings] = useState({
+    cardsPerSession: 12,
+    cooldownHours: 4
+  });
+
+  // Carregar configurações
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settingsRef = doc(db, 'settings', 'game');
+        const settingsDoc = await getDoc(settingsRef);
+        
+        if (settingsDoc.exists()) {
+          setSettings(settingsDoc.data() as typeof settings);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // Função para verificar e atualizar o cooldown
+  const checkCooldown = () => {
+    const lastSession = localStorage.getItem('lastCardSession');
+    if (!lastSession) {
+      localStorage.setItem('lastCardSession', new Date().toISOString());
+      return true;
+    }
+
+    const lastSessionDate = new Date(lastSession);
+    const now = new Date();
+    const hoursSinceLastSession = (now.getTime() - lastSessionDate.getTime()) / (1000 * 60 * 60);
+
+    if (hoursSinceLastSession >= settings.cooldownHours) {
+      localStorage.setItem('lastCardSession', new Date().toISOString());
+      return true;
+    }
+
+    const remainingHours = settings.cooldownHours - hoursSinceLastSession;
+    setTimeUntilNewCards(remainingHours);
+    return false;
+  };
+
+  // Função para formatar o tempo restante
+  const formatTimeRemaining = (hours: number) => {
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.floor((hours - wholeHours) * 60);
+    return `${wholeHours}h ${minutes}m`;
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -606,9 +658,21 @@ const Game: React.FC = () => {
           const data = partnershipDoc.data() as PartnershipData;
           const matchedCardIds = data.matches?.map(match => match.cardId) || [];
           const filteredCards = fetchedCards.filter(card => !matchedCardIds.includes(card.id));
-          setCards(filteredCards);
+
+          // Verificar cooldown e limitar número de cartas
+          const canShowNewCards = checkCooldown();
+          if (!canShowNewCards) {
+            setCards([]);
+            setIsLoading(false);
+            return;
+          }
+
+          // Embaralhar e limitar o número de cartas
+          const shuffledCards = [...filteredCards].sort(() => Math.random() - 0.5);
+          const limitedCards = shuffledCards.slice(0, settings.cardsPerSession);
+          setCards(limitedCards);
         } else {
-          setCards(fetchedCards);
+          setCards([]);
         }
 
         setIsLoading(false);
@@ -620,7 +684,7 @@ const Game: React.FC = () => {
     };
 
     fetchCards();
-  }, [currentUser, partnerId]);
+  }, [currentUser, partnerId, settings]);
 
   useEffect(() => {
     if (!currentUser || !partnerId) return;
@@ -690,6 +754,21 @@ const Game: React.FC = () => {
 
     loadUserFires();
   }, [currentUser]);
+
+  // Atualizar o timer a cada minuto
+  useEffect(() => {
+    if (timeUntilNewCards === null) return;
+
+    const timer = setInterval(() => {
+      setTimeUntilNewCards(prev => {
+        if (prev === null) return null;
+        const newTime = prev - (1/60); // Decrementa 1 minuto
+        return newTime <= 0 ? null : newTime;
+      });
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, [timeUntilNewCards]);
 
   const handleDrag = (event: any, info: any) => {
     if (isProcessingAction) return;
@@ -1193,18 +1272,30 @@ const Game: React.FC = () => {
                 }}
               >
                 <Typography variant="h5" gutterBottom>
-                  Todas as cartas foram visualizadas!
+                  {timeUntilNewCards !== null ? (
+                    <>
+                      Todas as cartas foram visualizadas!
+                      <br />
+                      Novas cartas disponíveis em: {formatTimeRemaining(timeUntilNewCards)}
+                    </>
+                  ) : (
+                    'Todas as cartas foram visualizadas!'
+                  )}
                 </Typography>
                 <Typography variant="body1" sx={{ mb: 3 }}>
-                  Aguarde novas cartas ou sugira suas próprias ideias!
+                  {timeUntilNewCards !== null
+                    ? 'Volte mais tarde para ver novas cartas!'
+                    : 'Aguarde novas cartas ou sugira suas próprias ideias!'}
                 </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => setShowSuggestionDialog(true)}
-                >
-                  Sugerir Cartas
-                </Button>
+                {timeUntilNewCards === null && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => setShowSuggestionDialog(true)}
+                  >
+                    Sugerir Cartas
+                  </Button>
+                )}
               </Box>
             )}
           </AnimatePresence>

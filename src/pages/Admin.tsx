@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where, getDoc, setDoc } from 'firebase/firestore';
 import {
   Box,
   Container,
@@ -17,12 +17,19 @@ import {
   DialogContent,
   DialogActions,
   Chip,
+  Paper,
+  Tabs,
+  Tab,
+  Tooltip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import SettingsIcon from '@mui/icons-material/Settings';
+import SaveIcon from '@mui/icons-material/Save';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CardData {
   id: string;
@@ -32,7 +39,16 @@ interface CardData {
   category: string;
 }
 
+interface SuggestionData {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+}
+
 const Admin = () => {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [cards, setCards] = useState<CardData[]>([]);
   const [newCard, setNewCard] = useState({
     title: '',
@@ -42,17 +58,22 @@ const Admin = () => {
   });
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestionData[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedSuggestion, setSelectedSuggestion] = useState<any>(null);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<SuggestionData | null>(null);
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [previewCard, setPreviewCard] = useState<CardData | null>(null);
-  const navigate = useNavigate();
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({
+    cardsPerSession: 12,
+    cooldownHours: 4
+  });
 
   useEffect(() => {
     fetchCards();
     fetchSuggestions();
+    loadSettings();
   }, []);
 
   const fetchCards = async () => {
@@ -180,29 +201,72 @@ const Admin = () => {
     }
   };
 
+  // Carregar configurações
+  const loadSettings = async () => {
+    try {
+      const settingsRef = doc(db, 'settings', 'game');
+      const settingsDoc = await getDoc(settingsRef);
+      
+      if (settingsDoc.exists()) {
+        setSettings(settingsDoc.data() as typeof settings);
+      } else {
+        // Criar configurações padrão se não existirem
+        await setDoc(settingsRef, settings);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error);
+    }
+  };
+
+  // Salvar configurações
+  const handleSaveSettings = async () => {
+    try {
+      const settingsRef = doc(db, 'settings', 'game');
+      await setDoc(settingsRef, settings);
+      setShowSettings(false);
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4" component="h1">
           Administração de Cards
         </Typography>
-        <Button 
-          variant="contained" 
-          onClick={handleExportCards}
-          sx={{
-            backgroundColor: '#ff4b6e',
-            '&:hover': {
-              backgroundColor: '#ff1f4c'
-            }
-          }}
-        >
-          Exportar Cards
-        </Button>
+        <Box>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setShowAddDialog(true)}
+            sx={{ mr: 2 }}
+          >
+            Adicionar Carta
+          </Button>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => setShowSuggestions(!showSuggestions)}
+            sx={{ mr: 2 }}
+          >
+            {showSuggestions ? 'Ver Cartas' : 'Ver Sugestões'}
+          </Button>
+          <Tooltip title="Configurações">
+            <IconButton
+              color="primary"
+              onClick={() => setShowSettings(true)}
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       <Box sx={{ mb: 3 }}>
         <Button
           variant="contained"
+          color="primary"
           onClick={() => setShowSuggestions(!showSuggestions)}
           sx={{ mr: 2 }}
         >
@@ -740,6 +804,62 @@ const Admin = () => {
             </Box>
           </Box>
         </Box>
+      </Dialog>
+
+      {/* Dialog de Configurações */}
+      <Dialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Configurações do Jogo
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Número de Cartas por Sessão"
+                  type="number"
+                  value={settings.cardsPerSession}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    cardsPerSession: Math.max(1, parseInt(e.target.value) || 0)
+                  })}
+                  inputProps={{ min: 1 }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Tempo de Espera (horas)"
+                  type="number"
+                  value={settings.cooldownHours}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    cooldownHours: Math.max(1, parseInt(e.target.value) || 0)
+                  })}
+                  inputProps={{ min: 1 }}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSettings(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveSettings}
+            variant="contained"
+            startIcon={<SaveIcon />}
+          >
+            Salvar
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );
