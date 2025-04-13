@@ -589,7 +589,7 @@ const Game: React.FC = () => {
 
       try {
         const cardsRef = collection(db, 'cards');
-        const q = query(cardsRef, where('status', '==', 'active'));
+        const q = query(cardsRef);
         const querySnapshot = await getDocs(q);
         
         const fetchedCards = querySnapshot.docs.map(doc => ({
