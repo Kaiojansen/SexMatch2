@@ -44,6 +44,8 @@ interface SuggestionData {
   title: string;
   description: string;
   image: string;
+  status?: string;
+  createdAt?: any;
 }
 
 const Admin = () => {
@@ -91,10 +93,16 @@ const Admin = () => {
       const suggestionsRef = collection(db, 'suggestions');
       const q = query(suggestionsRef, where('status', '==', 'pending'));
       const querySnapshot = await getDocs(q);
+      
       const fetchedSuggestions = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
-      }));
+        title: doc.data().title || '',
+        description: doc.data().description || '',
+        image: doc.data().image || '',
+        status: doc.data().status || 'pending',
+        createdAt: doc.data().createdAt
+      })) as SuggestionData[];
+      
       setSuggestions(fetchedSuggestions);
     } catch (error) {
       console.error('Erro ao buscar sugestões:', error);
