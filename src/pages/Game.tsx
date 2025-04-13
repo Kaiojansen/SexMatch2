@@ -65,17 +65,19 @@ interface Match {
 }
 
 interface PartnershipData {
+  id: string;
   user1: string;
   user2: string;
+  user1Name: string;
+  user2Name: string;
+  createdAt: Timestamp;
   likes_user1: string[];
   likes_user2: string[];
-  dislikes_user1: string[];
-  dislikes_user2: string[];
-  matches: Match[];
   fire_user1: string[];
   fire_user2: string[];
   feito_user1: string[];
   feito_user2: string[];
+  matches: Match[];
   new_matches_user1: number;
   new_matches_user2: number;
 }
@@ -287,9 +289,7 @@ const MatchesButton = styled(IconButton)(({ theme }) => ({
   backgroundColor: 'rgba(0, 0, 0, 0.6)',
   backdropFilter: 'blur(5px)',
   border: '2px solid #ff4b6e',
-  padding: '12px',
-  width: '48px',
-  height: '48px',
+  padding: '8px',
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'scale(1.1)',
@@ -297,25 +297,14 @@ const MatchesButton = styled(IconButton)(({ theme }) => ({
   },
   zIndex: 1000,
   '& .MuiSvgIcon-root': {
-    fontSize: '1.5rem',
-  },
-  [theme.breakpoints.down('sm')]: {
-    width: '56px',
-    height: '56px',
-    padding: '16px',
-    top: '16px',
-    right: '16px',
-    '& .MuiSvgIcon-root': {
-      fontSize: '1.8rem',
-    }
+    fontSize: '1.2rem',
   }
 }));
 
 const MatchesPanel = styled(Paper)(({ theme }) => ({
   position: 'relative',
-  width: '100%',
-  maxWidth: 400,
-  maxHeight: '90vh',
+  width: 280,
+  maxHeight: '80vh',
   backgroundColor: 'rgba(0, 0, 0, 0.9)',
   borderRadius: theme.spacing(2),
   padding: theme.spacing(2),
@@ -329,12 +318,12 @@ const MatchesPanel = styled(Paper)(({ theme }) => ({
 const MatchesGrid = styled(Box)({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: '16px',
-  padding: '16px',
+  gap: '12px',
+  padding: '8px 4px',
+  maxHeight: '400px', // Altura máxima para 4 cartas (2x2)
   overflowY: 'auto',
-  maxHeight: 'calc(90vh - 100px)',
   '&::-webkit-scrollbar': {
-    width: '8px',
+    width: '4px',
   },
   '&::-webkit-scrollbar-track': {
     background: 'rgba(255, 255, 255, 0.1)',
@@ -347,6 +336,7 @@ const MatchesGrid = styled(Box)({
       background: 'rgba(255, 255, 255, 0.4)',
     },
   },
+  // Esconde a scrollbar no Firefox
   scrollbarWidth: 'thin',
   scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1)'
 });
@@ -497,16 +487,6 @@ const Title = styled(Typography)({
   letterSpacing: '2px'
 });
 
-// Função de embaralhamento usando o algoritmo Fisher-Yates
-function shuffle<T>(array: T[]): T[] {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-}
-
 const Game: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -533,6 +513,7 @@ const Game: React.FC = () => {
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const [suggestionTitle, setSuggestionTitle] = useState('');
   const [suggestionDescription, setSuggestionDescription] = useState('');
+  const [recentDislikes, setRecentDislikes] = useState<{id: string, timestamp: number}[]>([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -623,48 +604,21 @@ const Game: React.FC = () => {
 
         // Filtrar cartas que já deram match
         const matchedCardIds = matches.map(match => match.cardId);
-
-        // Buscar dados da parceria para verificar likes/dislikes
-        if (!currentUser || !partnerId) {
-          setCards([]);
-          return;
-        }
-
-        const partnershipId = [currentUser.uid, partnerId].sort().join('_');
-        const partnershipRef = doc(db, 'partners', partnershipId);
-        const partnershipDoc = await getDoc(partnershipRef);
-
-        if (!partnershipDoc.exists()) {
-          setCards([]);
-          return;
-        }
-
-        const partnershipData = partnershipDoc.data() as PartnershipData;
-        const isCurrentUserUser1 = partnershipData.user1 === currentUser.uid;
         
-        // Separar cartas em inéditas e já vistas
-        const userLikes = isCurrentUserUser1 ? partnershipData.likes_user1 || [] : partnershipData.likes_user2 || [];
-        const userDislikes = isCurrentUserUser1 ? partnershipData.dislikes_user1 || [] : partnershipData.dislikes_user2 || [];
-        
-        const unseenCards = fetchedCards.filter(card => 
+        // Filtrar cartas que receberam dislike recentemente (últimas 24h)
+        const now = Date.now();
+        const recentDislikeIds = recentDislikes
+          .filter(d => now - d.timestamp < 24 * 60 * 60 * 1000)
+          .map(d => d.id);
+
+        const availableCards = fetchedCards.filter(card => 
           !matchedCardIds.includes(card.id) && 
-          !userLikes.includes(card.id) && 
-          !userDislikes.includes(card.id)
+          !recentDislikeIds.includes(card.id)
         );
 
-        const dislikedCards = fetchedCards.filter(card => 
-          !matchedCardIds.includes(card.id) && 
-          userDislikes.includes(card.id)
-        );
-
-        // Embaralhar as cartas usando o algoritmo Fisher-Yates
-        const shuffledUnseenCards = shuffle([...unseenCards]);
-        const shuffledDislikedCards = shuffle([...dislikedCards]);
-        
-        // Combinar as cartas, priorizando as inéditas
-        const allCards = [...shuffledUnseenCards, ...shuffledDislikedCards];
-        
-        setCards(allCards);
+        // Embaralhar as cartas disponíveis
+        const shuffledCards = availableCards.sort(() => Math.random() - 0.5);
+        setCards(shuffledCards);
       } catch (error) {
         console.error('Error fetching cards:', error);
         setError('Erro ao carregar as cartas. Tente novamente.');
@@ -674,7 +628,17 @@ const Game: React.FC = () => {
     };
 
     fetchCards();
-  }, [matches, currentUser, partnerId]);
+  }, [matches]);
+
+  // Limpar dislikes antigos periodicamente
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setRecentDislikes(prev => prev.filter(d => now - d.timestamp < 24 * 60 * 60 * 1000));
+    }, 60000); // Limpa a cada minuto
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   useEffect(() => {
     if (!currentUser || !partnerId) return;
@@ -870,53 +834,13 @@ const Game: React.FC = () => {
     }
   };
 
-  const handleDislike = async () => {
-    if (!currentUser || !partnerId) {
-      setError('Você precisa estar logado e ter um parceiro para descartar');
-      return;
-    }
-
-    if (currentCardIndex >= cards.length) return;
-
-    const currentCard = cards[currentCardIndex];
-    
-    try {
-      const partnershipId = [currentUser.uid, partnerId].sort().join('_');
-      const partnershipRef = doc(db, 'partners', partnershipId);
-      const partnershipDoc = await getDoc(partnershipRef);
-
-      if (!partnershipDoc.exists()) {
-        console.log('Documento de parceria não encontrado');
-        setError('Erro: Documento de parceria não encontrado');
-        return;
-      }
-
-      const data = partnershipDoc.data() as PartnershipData;
-      const isUser1 = data.user1 === currentUser.uid;
-      
-      // Pegar os dislikes do usuário atual
-      const userDislikes = isUser1 ? data.dislikes_user1 || [] : data.dislikes_user2 || [];
-
-      // Verificar se já descartou este card
-      if (userDislikes.includes(currentCard.id)) {
-        console.log('Card já foi descartado anteriormente');
-        setCurrentCardIndex(prev => prev + 1);
-        return;
-      }
-
-      // Adicionar o dislike
-      const updatedDislikes = [...userDislikes, currentCard.id];
-
-      // Atualizar os dislikes no banco de dados
-      await updateDoc(partnershipRef, {
-        [isUser1 ? 'dislikes_user1' : 'dislikes_user2']: updatedDislikes
-      });
-
+  const handleDislike = () => {
+    if (currentCardIndex < cards.length) {
+      const dislikedCard = cards[currentCardIndex];
+      setRecentDislikes(prev => [...prev, { id: dislikedCard.id, timestamp: Date.now() }]);
       setCurrentCardIndex(prev => prev + 1);
-    } catch (error) {
-      console.error('Erro ao processar dislike:', error);
-      setError('Erro ao processar seu dislike. Tente novamente.');
-      setTimeout(() => setError(''), 3000);
+    } else {
+      setCurrentCardIndex(prev => prev + 1);
     }
   };
 
@@ -1044,12 +968,10 @@ const Game: React.FC = () => {
       <MatchesButton onClick={handleToggleMatches}>
         <Badge badgeContent={newMatchCount} color="error" sx={{ 
           '& .MuiBadge-badge': { 
-            fontSize: '0.8rem',
-            minWidth: '20px',
-            height: '20px',
-            padding: '0 6px',
-            top: 8,
-            right: 8
+            fontSize: '0.7rem',
+            minWidth: '16px',
+            height: '16px',
+            padding: '0 4px'
           }
         }}>
           <LocalFireDepartmentIcon />
