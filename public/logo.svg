@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="50" viewBox="0 0 200 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Coração estilizado -->
+  <path d="M25 10 C25 10, 10 10, 10 20 C10 30, 25 40, 25 40 C25 40, 40 30, 40 20 C40 10, 25 10, 25 10" fill="#ff4b6e"/>
+  
+  <!-- Texto SexMatch -->
+  <text x="55" y="32" font-family="Staatliches" font-size="28" fill="#ff4b6e">
+    SexMatch
+  </text>
+</svg> 

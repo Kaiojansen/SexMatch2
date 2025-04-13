@@ -513,7 +513,6 @@ const Game: React.FC = () => {
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const [suggestionTitle, setSuggestionTitle] = useState('');
   const [suggestionDescription, setSuggestionDescription] = useState('');
-  const [recentDislikes, setRecentDislikes] = useState<{id: string, timestamp: number}[]>([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -604,17 +603,7 @@ const Game: React.FC = () => {
 
         // Filtrar cartas que já deram match
         const matchedCardIds = matches.map(match => match.cardId);
-        
-        // Filtrar cartas que receberam dislike recentemente (últimas 24h)
-        const now = Date.now();
-        const recentDislikeIds = recentDislikes
-          .filter(d => now - d.timestamp < 24 * 60 * 60 * 1000)
-          .map(d => d.id);
-
-        const availableCards = fetchedCards.filter(card => 
-          !matchedCardIds.includes(card.id) && 
-          !recentDislikeIds.includes(card.id)
-        );
+        const availableCards = fetchedCards.filter(card => !matchedCardIds.includes(card.id));
 
         // Embaralhar as cartas disponíveis
         const shuffledCards = availableCards.sort(() => Math.random() - 0.5);
@@ -629,16 +618,6 @@ const Game: React.FC = () => {
 
     fetchCards();
   }, [matches]);
-
-  // Limpar dislikes antigos periodicamente
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      setRecentDislikes(prev => prev.filter(d => now - d.timestamp < 24 * 60 * 60 * 1000));
-    }, 60000); // Limpa a cada minuto
-
-    return () => clearInterval(cleanupInterval);
-  }, []);
 
   useEffect(() => {
     if (!currentUser || !partnerId) return;
@@ -835,13 +814,7 @@ const Game: React.FC = () => {
   };
 
   const handleDislike = () => {
-    if (currentCardIndex < cards.length) {
-      const dislikedCard = cards[currentCardIndex];
-      setRecentDislikes(prev => [...prev, { id: dislikedCard.id, timestamp: Date.now() }]);
-      setCurrentCardIndex(prev => prev + 1);
-    } else {
-      setCurrentCardIndex(prev => prev + 1);
-    }
+    setCurrentCardIndex(prev => prev + 1);
   };
 
   // Função para marcar uma carta como "quero muito"
