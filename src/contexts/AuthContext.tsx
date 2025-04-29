@@ -3,7 +3,6 @@ import { auth, googleProvider } from '../firebase';
 import { 
   User,
   signInWithRedirect,
-  signInWithPopup,
   signOut,
   onAuthStateChanged,
   getRedirectResult,
@@ -38,19 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     try {
       setError(null);
-      const provider = new GoogleAuthProvider();
-      
-      // Primeiro tenta usar popup
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (popupError: any) {
-        // Se o popup for bloqueado, tenta redirect
-        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
-          await signInWithRedirect(auth, provider);
-        } else {
-          throw popupError;
-        }
-      }
+      await signInWithRedirect(auth, googleProvider);
     } catch (error: any) {
       console.error('Erro no login:', error);
       setError(error.message || 'Erro ao fazer login. Tente novamente.');
